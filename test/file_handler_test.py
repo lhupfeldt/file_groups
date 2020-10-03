@@ -45,26 +45,35 @@ def test_delete_no_symlinks_without_corresponding(duplicates_dir, capsys):
 
 
 @same_content_files('Hi', 'ki/ttt', 'df/z', 'df/y')
-def test_rename_existing_to_path(duplicates_dir, capsys):
+def test_rename_existing_to_path_in_work_on(duplicates_dir, capsys):
     fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
-    ck.check_rename(dry=True)
-    ck.check_rename(dry=False)
+    assert ck.check_rename(dry=True, is_overwrite=True)
+    assert ck.check_rename(dry=False)
     pytest.xfail("TODO: overwrite check for overwriting 'work_on' file?")
 
 
-@same_content_files('Hi', 'outside/a', 'ki/z', 'df/y')
-def test_move_existing_to_path(duplicates_dir, capsys):
+@same_content_files('Hi', 'ki/z', 'df/y')
+def test_move_existing_to_path_in_protect(duplicates_dir, capsys):
     fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', capsys)
-    with pytest.raises(AssertionError):
+
+    with pytest.raises(AssertionError) as exinfo:
         ck.check_move(dry=True)
-    with pytest.raises(AssertionError):
+    assert f"Oops, trying to overwrite protected file '{duplicates_dir}/ki/z' with '{duplicates_dir}/df/y'." in str(exinfo.value)
+
+    with pytest.raises(AssertionError) as exinfo:
         ck.check_move(dry=False)
+    assert f"Oops, trying to overwrite protected file '{duplicates_dir}/ki/z' with '{duplicates_dir}/df/y'." in str(exinfo.value)
+
+
+@same_content_files('Hi', 'outside/a', 'ki/z', 'df/y')
+def test_move_existing_to_path_outside_file_sets(duplicates_dir, capsys):
+    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[])
 
     ck = FP(fh, str(Path('df/y').absolute()), 'outside/a', capsys)
-    ck.check_move(dry=True)
-    ck.check_move(dry=False)
+    assert ck.check_move(dry=True, is_overwrite=True)
+    assert ck.check_move(dry=False)
     pytest.xfail("TODO: overwrite check for run overwriting file outside groups?")
 
 
@@ -370,15 +379,15 @@ def test_replace_a_symlink_with_the_file_it_points_to(duplicates_dir, capsys):
     abs_f11 = str(Path('df/f11').absolute())
 
     print('-------------------------- dry_run -------------------------------')
-    assert fh.registered_delete(abs_f11_sym, 'f11')
-    assert fh.registered_rename(abs_f11, 'df/f11sym')
+    fh.registered_delete(abs_f11_sym, 'f11')
+    fh.registered_rename(abs_f11, 'df/f11sym')
     assert count_files({'df': 3})
 
     fh.dry_run = False
     fh.reset()
     print('-------------------------- do_it -------------------------------')
-    assert fh.registered_delete(abs_f11_sym, 'f11')
-    assert fh.registered_rename(abs_f11, 'df/f11sym')
+    fh.registered_delete(abs_f11_sym, 'f11')
+    fh.registered_rename(abs_f11, 'df/f11sym')
 
     assert os.path.exists('df/f11sym')
     assert not os.path.islink('df/f11sym')

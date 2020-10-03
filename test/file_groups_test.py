@@ -307,7 +307,7 @@ def test_file_groups_specified_protect_dir_same_as_work_on_dir(duplicates_dir, c
     sout, _ = capsys.readouterr()
     assert "Ignoring 'work' dir 'xx' which is also a 'protect' dir." in sout
 
-    assert ckfl(fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32')
+    assert ckfl("must_protect.files", fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32')
 
 
 @same_content_files("Hi", 'xx/f11', 'xx/f12')
@@ -320,7 +320,7 @@ def test_file_groups_resolved_protect_dir_same_as_work_on_dir(duplicates_dir, ca
     sout, _ = capsys.readouterr()
     assert f"Ignoring 'work' dir '{duplicates_dir}/xx' (from argument 'xx/yy/../../xx') which is also a 'protect' dir (from argument 'xx')" in sout
 
-    assert ckfl(fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32', 'xx/yy/f41')
+    assert ckfl("must_protect.files", fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32', 'xx/yy/f41')
 
 
 @same_content_files("Hi", 'ki/f11', 'df2.txt')

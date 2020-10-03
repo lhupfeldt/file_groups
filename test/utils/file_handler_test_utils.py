@@ -1,3 +1,5 @@
+import sys
+import traceback
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -20,20 +22,18 @@ class FP():
     right: str
     capsys: pytest.fixture
 
-    def check_rename(self, dry, rename_or_move='renaming'):
+    def check_rename(self, dry, rename_or_move='renaming', is_overwrite=False):
         self.fh.dry_run = dry
         self.fh.reset()
         if rename_or_move == 'renaming':
-            ok = self.fh.registered_rename(self.left, self.right)
+            self.fh.registered_rename(self.left, self.right)
         else:
-            ok = self.fh.registered_move(self.left, self.right)
+            self.fh.registered_move(self.left, self.right)
 
         out, _ = self.capsys.readouterr()
         print(out)
 
         try:
-            assert ok
-
             if rename_or_move == 'renaming':
                 assert self.fh.num_renamed >= 1
             else:
@@ -43,30 +43,29 @@ class FP():
 
             if dry:
                 assert Path(self.left).exists()
-                assert not Path(self.right).exists()
+                assert is_overwrite or not Path(self.right).exists()
             else:
                 assert not Path(self.left).exists()
                 assert Path(self.right).exists()
         except AssertionError as ex:
             print(ex)
+            traceback.print_exception(*sys.exc_info())
             return False
 
         return True
 
-    def check_move(self, dry):
-        return self.check_rename(dry, rename_or_move='moving')
+    def check_move(self, dry, is_overwrite=False):
+        return self.check_rename(dry, rename_or_move='moving', is_overwrite=is_overwrite)
 
     def check_delete(self, dry):
         self.fh.dry_run = dry
         self.fh.reset()
-        ok = self.fh.registered_delete(self.left, self.right)
+        self.fh.registered_delete(self.left, self.right)
 
         out, _ = self.capsys.readouterr()
         print(out)
 
         try:
-            assert ok
-
             assert self.fh.num_deleted >= 1
             assert f"deleting: {self.left}" in out
             if dry:
@@ -77,6 +76,7 @@ class FP():
                 assert self.right is None or Path(self.right).exists()
         except AssertionError as ex:
             print(ex)
+            traceback.print_exception(*sys.exc_info())
             return False
 
         return True

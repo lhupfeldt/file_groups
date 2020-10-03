@@ -37,6 +37,7 @@ class FileHandler(FileGroups):
             delete_symlinks_instead_of_relinking=False,
             debug=False):
         super().__init__(
+            protect=protected_regexes,
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
             protect_exclude=protect_exclude, work_include=work_include,
             debug=debug)
@@ -44,7 +45,6 @@ class FileHandler(FileGroups):
         self._fcmp = fcmp
 
         self.dry_run = dry_run
-        self.protected_regexes = protected_regexes
         self.delete_symlinks_instead_of_relinking = delete_symlinks_instead_of_relinking
 
         # Holds paths of deleted symlinks
@@ -76,17 +76,12 @@ class FileHandler(FileGroups):
         if self.debug:
             print(*args, **kwargs)
 
-    def _no_symlink_check_registered_delete(self, delete_path: str) -> bool:
+    def _no_symlink_check_registered_delete(self, delete_path: str):
         """Does a registered delete without checking for symlinks, so that we can use this in the symlink handling."""
         assert isinstance(delete_path, str)
         assert os.path.isabs(delete_path), f"Expected absolute path, got '{delete_path}'"
         assert delete_path not in self.must_protect.files, f"Oops, trying to delete protected file '{delete_path}'."
         assert delete_path not in self.must_protect.symlinks, f"Oops, trying to delete protected symlink '{delete_path}'."
-
-        for pt in self.protected_regexes:
-            if pt.match(delete_path):
-                print(f"    NOT deleting '{delete_path}' protected by regex '{pt.pattern}'.")
-                return False
 
         print("    deleting:", delete_path)
         if not self.dry_run:
@@ -95,8 +90,6 @@ class FileHandler(FileGroups):
 
         if delete_path in self.may_work_on.symlinks:
             self.deleted_symlinks.add(delete_path)
-
-        return True
 
     def _handle_single_symlink_chain(self, symlnk_path: str, keep_path):
         """TODO doc - Symlink will only be deleted if it is in self.may_work_on.files."""
@@ -168,33 +161,22 @@ class FileHandler(FileGroups):
             self._handle_single_symlink_chain(os.fspath(symlnk), to_path)
 
     def registered_delete(self, delete_path: str, corresponding_keep_path):
-        if not self._no_symlink_check_registered_delete(delete_path):
-            return False
-
+        self._no_symlink_check_registered_delete(delete_path)
         self._fix_symlinks_to_deleted_or_moved_files(delete_path, corresponding_keep_path)
-        return True
 
     def _registered_move_or_rename(self, from_path: str, to_path, *, is_move):
         assert isinstance(from_path, str)
         assert os.path.isabs(from_path), f"Expected absolute path, got '{from_path}'"
         assert from_path not in self.must_protect.files, f"Oops, trying to move/rename protected file '{from_path}'."
         assert from_path not in self.must_protect.symlinks, f"Oops, trying to move/rename protected symlink '{from_path}'."
-        assert str(Path(to_path).absolute()) not in self.must_protect.files, f"Oops, trying to overwrite protected file '{to_path}' with '{from_path}'."
-        assert str(Path(to_path).absolute()) not in self.must_protect.symlinks, f"Oops, trying to overwrite protected symlink '{to_path}' with '{from_path}'."
+        abs_tp = str(Path(to_path).absolute())
+        assert abs_tp not in self.must_protect.files, f"Oops, trying to overwrite protected file '{Path(to_path).absolute()}' with '{from_path}'."
+        assert abs_tp not in self.must_protect.symlinks, f"Oops, trying to overwrite protected symlink '{to_path}' with '{from_path}'."
 
         tp = os.fspath(to_path)
 
-        for pt in self.protected_regexes:
-            if pt.match(from_path):
-                print(f"    NOT moving '{from_path}' protected by regex '{pt.pattern}' to '{tp}'.")
-                return False
-
-            if pt.match(to_path):
-                print(f"    NOT moving '{from_path}' to '{tp}' protected by regex '{pt.pattern}'.")
-                return False
-
         if self.dry_run:
-            self.moved_from[os.fspath(to_path)] = from_path
+            self.moved_from[abs_tp] = from_path
 
         if is_move:
             print("    moving:", from_path, 'to', tp)
@@ -210,13 +192,12 @@ class FileHandler(FileGroups):
             self.num_renamed += 1
 
         self._fix_symlinks_to_deleted_or_moved_files(from_path, to_path)
-        return True
 
     def registered_move(self, from_path: str, to_path):
-        return self._registered_move_or_rename(from_path, to_path, is_move=True)
+        self._registered_move_or_rename(from_path, to_path, is_move=True)
 
     def registered_rename(self, from_path: str, to_path):
-        return self._registered_move_or_rename(from_path, to_path, is_move=False)
+        self._registered_move_or_rename(from_path, to_path, is_move=False)
 
     def compare(self, f1: FsPath, f2: FsPath) -> bool:
         """Extends CompareFiles.compare with logic to handle 'renamed/moved' files during dry_run."""
@@ -228,8 +209,10 @@ class FileHandler(FileGroups):
 
             return False
 
-        existing_f1 = Path(self.moved_from.get(os.fspath(f1), f1))
-        existing_f2 = Path(self.moved_from.get(os.fspath(f2), f2))
+        f1_abs = str(Path(f1).absolute())
+        existing_f1 = Path(self.moved_from.get(os.fspath(f1_abs), f1))
+        f2_abs = str(Path(f2).absolute())
+        existing_f2 = Path(self.moved_from.get(os.fspath(f2_abs), f2))
         if self._fcmp.compare(existing_f1, existing_f2):
             print(f"Duplicates: '{f1}' '{f2}'")
             return True

@@ -30,7 +30,7 @@ def pylint_src(session):
 def pylint_test(session):
     session.install('.')
     session.install(f'pylint>={_PYLINT_MIN_VERSION}', f'pylint-pytest>={_PYLINT_PYTEST_MIN_VERSION}')
-    session.run('pylint', str(_HERE/'test'))
+    session.run('pylint', '--fail-under', '9.5', str(_HERE/'test'))
 
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)

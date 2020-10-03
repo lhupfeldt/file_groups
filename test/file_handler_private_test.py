@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+import pytest
+
 from file_groups.file_handler import FileHandler
 
 from .conftest import same_content_files
@@ -15,7 +17,7 @@ def test_no_symlink_check_registered_delete_ok(duplicates_dir, capsys):
     fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[])
 
     y_abs = str(Path('y').absolute())
-    assert fh._no_symlink_check_registered_delete(y_abs)
+    fh._no_symlink_check_registered_delete(y_abs)
 
     out, _ = capsys.readouterr()
     assert f"deleting: {y_abs}" in out
@@ -28,7 +30,7 @@ def test_no_symlink_check_registered_delete_ok_dry(duplicates_dir, capsys):
     fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[])
 
     y_abs = str(Path('y').absolute())
-    assert fh._no_symlink_check_registered_delete(y_abs)
+    fh._no_symlink_check_registered_delete(y_abs)
 
     out, _ = capsys.readouterr()
     print(fh.moved_from)
@@ -39,13 +41,16 @@ def test_no_symlink_check_registered_delete_ok_dry(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[re.compile(r'.*a$')])
+    fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[re.compile(r'.*a$')], debug=True)
 
     ya_abs = str(Path('ya').absolute())
-    assert not fh._no_symlink_check_registered_delete(ya_abs)
+    with pytest.raises(AssertionError) as exinfo:
+        fh._no_symlink_check_registered_delete(ya_abs)
+
+    assert f"Oops, trying to delete protected file '{str(ya_abs)}'." in str(exinfo.value)
 
     out, _ = capsys.readouterr()
-    assert f"NOT deleting '{ya_abs}' protected by regex '.*a$'." in out
+    assert f"find may_work_on - '{duplicates_dir}/ya' is protected by regex re.compile('.*a$'), assigning to group must_protect instead." in out
 
     assert Path(ya_abs).exists()
 
@@ -55,10 +60,10 @@ def test_no_symlink_check_registered_delete_ok_dry_protected_matched(duplicates_
     fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[re.compile(r'.*a$')])
 
     ya_abs = str(Path('ya').absolute())
-    assert not fh._no_symlink_check_registered_delete(ya_abs)
+    with pytest.raises(AssertionError) as exinfo:
+        fh._no_symlink_check_registered_delete(ya_abs)
 
-    out, _ = capsys.readouterr()
-    assert f"NOT deleting '{ya_abs}' protected by regex '.*a$'." in out
+    assert f"Oops, trying to delete protected file '{str(ya_abs)}'." in str(exinfo.value)
 
     assert Path(ya_abs).exists()
 
@@ -68,7 +73,7 @@ def test_no_symlink_check_registered_delete_ok_protected_un_matched(duplicates_d
     fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[re.compile(r'.*b$')])
 
     ya_abs = str(Path('ya').absolute())
-    assert fh._no_symlink_check_registered_delete(ya_abs)
+    fh._no_symlink_check_registered_delete(ya_abs)
 
     out, _ = capsys.readouterr()
     assert f"deleting: {ya_abs}" in out
@@ -81,7 +86,7 @@ def test_no_symlink_check_registered_delete_ok_dry_protected_un_matched(duplicat
     fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[re.compile(r'.*b$')])
 
     ya_abs = str(Path('ya').absolute())
-    assert fh._no_symlink_check_registered_delete(ya_abs)
+    fh._no_symlink_check_registered_delete(ya_abs)
 
     out, _ = capsys.readouterr()
     assert f"deleting: {ya_abs}" in out

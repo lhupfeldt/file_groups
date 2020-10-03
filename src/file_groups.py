@@ -4,12 +4,21 @@ from pathlib import Path
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from itertools import chain
+from enum import Enum
 from typing import Optional, Dict, List, Sequence, Set
+
+from .config_files import ConfigFiles
+
+
+class GroupType(Enum):
+    must_protect = 0
+    may_work_on = 1
 
 
 @dataclass
 class _Group():
-    name: str
+    typ: GroupType
 
     dirs: Dict[str, Path]
 
@@ -17,6 +26,7 @@ class _Group():
     symlinks: Dict[str, DirEntry]
     symlinks_by_abs_points_to: Dict[str, List[DirEntry]]
 
+    # For stats only
     num_directories: int = 0
     num_directory_symlinks: int = 0
 
@@ -58,7 +68,12 @@ class _ExcludeMatchGroup(_Group):
 
 
 class FileGroups():
-    """Create six different groups of regular files and symlinks.
+    """Create six different groups of regular files and symlinks by collecting files under specified directories.
+
+    Note that directory symlinks are followed for the specified arguments!, but never for any subdirectories.
+
+    Config Files
+    See `config_files` for description of config file format and arguments.
 
     Arguments:
         protect_dirs_seq: Directories in which (regular) files may not be deleted/modified.
@@ -70,7 +85,9 @@ class FileGroups():
         protect_exclude: Exclude files matching regex in the protected files (does not apply to symlinks). Default NONE (include ALL).
         work_include: Only include files matching regex in the may_work_on files (does not apply to symlinks). Default include ALL.
 
-    Note that symlinks are followed for the specified arguments, but never for any subdirectories.
+        ignore_config_dirs_config_files: Ignore config files in standard config directories.
+        ignore_per_directory_config_files: Ignore config files in collected directories.
+
         debug: Be extremely verbose.
     """
 
@@ -78,10 +95,18 @@ class FileGroups():
             self,
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
+            protect: Sequence[re.Pattern] = (),
             protect_exclude: re.Pattern = None, work_include: re.Pattern = None,
+            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False,
             debug=False):
         super().__init__()
         self.debug = debug
+
+        self.config_files = ConfigFiles(
+            protect=protect,
+            ignore_config_dirs_config_files=ignore_config_dirs_config_files,
+            ignore_per_directory_config_files=ignore_per_directory_config_files,
+            debug=debug)
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
         protect_dirs: Dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
@@ -101,8 +126,8 @@ class FileGroups():
 
             work_dirs[real_dp] = dp
 
-        self.must_protect = _ExcludeMatchGroup('must_protect', protect_dirs, {}, {}, defaultdict(list), exclude=protect_exclude)
-        self.may_work_on = _IncludeMatchGroup('may_work_on', work_dirs, {}, {}, defaultdict(list), include=work_include)
+        self.must_protect = _ExcludeMatchGroup(GroupType.must_protect, protect_dirs, {}, {}, defaultdict(list), exclude=protect_exclude)
+        self.may_work_on = _IncludeMatchGroup(GroupType.may_work_on, work_dirs, {}, {}, defaultdict(list), include=work_include)
 
         self.collect()
 
@@ -153,48 +178,70 @@ class FileGroups():
 
         checked_dirs: Set[str] = set()
 
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group):
+        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: Dict):
             """Find all files belonging to 'group'"""
-            trace(f'find {group.name}:', abs_dir_path)
+            trace(f'find {group.typ.name}:', abs_dir_path)
             if abs_dir_path in checked_dirs:
                 trace('directory already checked')
                 return
 
             group.num_directories += 1
+            dir_config, config_file = self.config_files.dir_config(Path(abs_dir_path), parent_conf)
 
             for entry in os.scandir(abs_dir_path):
                 if entry.is_dir(follow_symlinks=False):
                     if entry.path in other_group.dirs:
-                        trace(f"find {group.name} - '{entry.path}' is in '{other_group.name}' dir list and not in '{group.name}' dir list")
-                        find_group(entry.path, other_group, group)
+                        trace(f"find {group.typ.name} - '{entry.path}' is in '{other_group.typ.name}' dir list and not in '{group.typ.name}' dir list")
+                        find_group(entry.path, other_group, group, dir_config)
                         continue
 
-                    find_group(entry.path, group, other_group)
+                    find_group(entry.path, group, other_group, dir_config)
                     continue
+
+                if config_file and entry.name == config_file.name:
+                    continue
+
+                current_group = group
+                if group.typ is GroupType.may_work_on:
+                    # We need to check for match against configured protect patterns, if match, then the file must got to protect group instead
+                    pattern = self.config_files.is_protected(entry, dir_config)
+                    if pattern:
+                        trace(f"find {group.typ.name} - '{entry.path}' is protected by regex {pattern}, assigning to group {other_group.typ.name} instead.")
+                        current_group = other_group
 
                 if entry.is_symlink():
                     points_to = os.readlink(entry)
                     abs_points_to = os.path.normpath(os.path.join(abs_dir_path, points_to))
 
                     if entry.is_dir(follow_symlinks=True):
-                        trace(f"find {group.name} - '{entry.path}' -> '{points_to}' is a symlink to a directory - ignoring")
-                        group.num_directory_symlinks += 1
+                        trace(f"find {current_group.typ.name} - '{entry.path}' -> '{points_to}' is a symlink to a directory - ignoring")
+                        current_group.num_directory_symlinks += 1
                         continue
 
-                    group.symlinks[entry.path] = entry
-                    group.symlinks_by_abs_points_to[abs_points_to].append(entry)
+                    current_group.symlinks[entry.path] = entry
+                    current_group.symlinks_by_abs_points_to[abs_points_to].append(entry)
                     continue
 
-                trace(f'find {group.name} - entry name: {entry.name}')
-                group.add_entry_match(entry, debug=self.debug)
+                trace(f'find {current_group.typ.name} - entry name: {entry.name}')
+                current_group.add_entry_match(entry, debug=self.debug)
 
             checked_dirs.add(abs_dir_path)
 
-        for kip in self.must_protect.dirs:
-            find_group(kip, self.must_protect, self.may_work_on)
+        for dd in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
+            pd = Path(dd)
+            while len(pd.parts) > 1:
+                parent_conf = self.config_files.per_dir_configs.get(dd)
+                if parent_conf:
+                    break
 
-        for dfp in self.may_work_on.dirs:
-            find_group(dfp, self.may_work_on, self.must_protect)
+                pd = pd.parent
+            else:
+                parent_conf = self.config_files.global_config
+
+            if dd in self.must_protect.dirs:
+                find_group(dd, self.must_protect, self.may_work_on, parent_conf)
+            else:
+                find_group(dd, self.may_work_on, self.must_protect, parent_conf)
 
     def dump(self):
         """Print collected files. This may be A LOT of output for large directories."""

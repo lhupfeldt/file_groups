@@ -4,13 +4,14 @@ from typing import Mapping, List
 from file_groups.file_groups import FileGroups
 
 
-def ckfl(ll, *exp_names):
+def ckfl(attr_name, ll, *exp_names):
     """Check file list against expected file names"""
     cwd = os.getcwd()
     got = tuple(sorted(fn.replace(cwd + '/', '') for fn in ll))
     if got == exp_names:
         return True
 
+    print(f"check: {attr_name}")
     print(f"got: {got}")
     print(f"exp: {exp_names}")
     return False
@@ -59,7 +60,7 @@ class FGC():
 
     def ckfl(self, attr_name, *rel_paths: str):
         self.checked.add(attr_name)
-        return ckfl(self._ggetattr(attr_name), *rel_paths)
+        return ckfl(attr_name, self._ggetattr(attr_name), *rel_paths)
 
     def cksfl(self, attr_name, rel_path_to_symlinks: Mapping[str, List[str]]):
         self.checked.add(attr_name)
@@ -81,4 +82,4 @@ class FGC():
                 if attr_name.endswith('points_to'):
                     assert cksfl(self._ggetattr(attr_name), self.duplicates_dir, {}), "Not empty '{attr_name}'"
                 else:
-                    assert ckfl(self._ggetattr(attr_name)), "Not empty '{attr_name}'"
+                    assert ckfl(attr_name, self._ggetattr(attr_name)), "Not empty '{attr_name}'"
