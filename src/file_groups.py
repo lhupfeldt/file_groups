@@ -79,7 +79,7 @@ class FileGroups():
         protect_dirs_seq: Directories in which (regular) files may not be deleted/modified.
             Directory may be a subdirectory of (or the same, for convenient globbing) as a work_dirs_seq directory.
 
-        work_dirs_seq: Directories in which to potentially delete/modify files.
+        work_dirs_seq: Directories in which to potentially delete/rename/modify files.
             Directory may be a subdirectory of (or the same, for convenient globbing) as a protect_dirs_seq directory.
 
         protect_exclude: Exclude files matching regex in the protected files (does not apply to symlinks). Default NONE (include ALL).
@@ -98,6 +98,7 @@ class FileGroups():
             protect: Sequence[re.Pattern] = (),
             protect_exclude: re.Pattern = None, work_include: re.Pattern = None,
             ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False,
+            remember_configs=True,
             debug=False):
         super().__init__()
         self.debug = debug
@@ -106,6 +107,7 @@ class FileGroups():
             protect=protect,
             ignore_config_dirs_config_files=ignore_config_dirs_config_files,
             ignore_per_directory_config_files=ignore_per_directory_config_files,
+            remember_configs=remember_configs,
             debug=debug)
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages

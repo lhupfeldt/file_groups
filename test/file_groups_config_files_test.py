@@ -10,7 +10,7 @@ from .config_files_test import set_conf_dirs
 
 @same_content_files("Hejsa", 'ki/Af11.jpg', 'df/Bf11.jpg')
 def test_file_groups_sys_user_config_files_no_global(duplicates_dir, set_conf_dirs):
-    with FGC(FileGroups(['ki'], ['df'], debug=True), duplicates_dir) as ck:
+    with FGC(FileGroups(['ki'], ['df'], remember_configs=True, debug=True), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/Af11.jpg')
         assert ck.ckfl('may_work_on.files', 'df/Bf11.jpg')
 

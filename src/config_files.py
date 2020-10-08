@@ -65,11 +65,13 @@ class ConfigFiles():
         protect: An optional sequence of regexes to be added to protect[recursive] for all directories.
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
+        remember_configs: Store loaded and merged configs in `dir_configs` member variable.
         debug: Be extremely verbose.
 
     Members:
        global_config: Dict
-       dir_configs: Dict[str: Dict] Mapping from dir name to directory specific config dict.
+       remember_configs: Whether per directory resolved/merged configs are stored in `dir_configs`.
+       dir_configs: Dict[str: Dict] Mapping from dir name to directory specific config dict. Only if remember_configs is True.
     """
 
     _conf_file_names = [".file_groups.conf", "file_groups.conf"]
@@ -79,8 +81,10 @@ class ConfigFiles():
     _valid_config_dir_protect_scopes = ("local", "recursive", "global")
 
     # TODO: protect: Sequence[re.Pattern] = (), but getting mypy error
-    def __init__(self, protect: Sequence = (), ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False):
+    def __init__(
+            self, protect: Sequence = (), ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, debug=False):
         super().__init__()
+        self.remember_configs = remember_configs
         self.debug = debug
 
         self.per_dir_configs: Dict[str, Dict] = {}  # key is abs_dir_path, value is config dict
@@ -105,7 +109,8 @@ class ConfigFiles():
                     continue
 
                 new_config, _ = self._read_and_validate_config_file(conf_dir, self.global_config, self._valid_config_dir_protect_scopes)
-                self.per_dir_configs[str(conf_dir)] = new_config
+                if self.remember_configs:
+                    self.per_dir_configs[str(conf_dir)] = new_config
 
                 fpt = new_config["file_groups"]["protect"]
                 gfpt["recursive"].update(fpt.get("global", ()))
@@ -200,7 +205,8 @@ class ConfigFiles():
         """
 
         new_config, conf_file = self._read_and_validate_config_file(conf_dir, parent_conf, self._valid_dir_protect_scopes)
-        self.per_dir_configs[str(conf_dir)] = new_config
+        if self.remember_configs:
+            self.per_dir_configs[str(conf_dir)] = new_config
         return new_config, conf_file
 
     def is_protected(self, ff: FsPath, dir_config: Mapping):
