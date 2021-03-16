@@ -97,7 +97,8 @@ class ConfigFiles():
             }
         }
 
-        self.ignore_per_directory_config_files = False
+        self.ignore_per_directory_config_files = ignore_per_directory_config_files
+
         if not ignore_config_dirs_config_files:
             app_dirs = AppDirs("file_groups", "Hupfeldt_IT")
             config_dirs = app_dirs.site_config_dir.split(':') + [app_dirs.user_config_dir]
@@ -108,7 +109,7 @@ class ConfigFiles():
                 if not conf_dir.exists():
                     continue
 
-                new_config, _ = self._read_and_validate_config_file(conf_dir, self.global_config, self._valid_config_dir_protect_scopes)
+                new_config, _ = self._read_and_validate_config_file(conf_dir, self.global_config, self._valid_config_dir_protect_scopes, False)
                 if self.remember_configs:
                     self.per_dir_configs[str(conf_dir)] = new_config
 
@@ -121,15 +122,45 @@ class ConfigFiles():
                 except KeyError:
                     pass
 
-        self.ignore_per_directory_config_files = ignore_per_directory_config_files
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     def trace(self, *args, **kwargs):
         if self.debug:
             print(*args, **kwargs)
 
+    def _get_single_conf_file(self, conf_dir: Path, ignore_config_files: bool) -> Tuple[Optional[Dict], Optional[Path]]:
+        """Return the config file content and path if any config file is found in conf_dir. Error if two are found."""
+        self.trace(f"Checking for config file in directory: {conf_dir}")
+
+        num_files = 0
+        for cfn in self._conf_file_names:
+            tmp_conf_file = conf_dir/cfn
+            if tmp_conf_file.exists():
+                conf_file = tmp_conf_file
+                num_files += 1
+
+        if num_files == 1:
+            if ignore_config_files:
+                self.trace(f"Ignoring config file: {conf_file}")
+                return None, None
+
+            self.trace(f"Read config file: {conf_file}")
+            with open(conf_file) as cf:
+                new_config = ast.literal_eval(cf.read())
+            self.trace(pformat(new_config))
+            return new_config, conf_file
+
+        if num_files == 0:
+            self.trace(f"No config file in directory {conf_dir}")
+            return None, None
+
+        msg = f"More than one config file in dir '{conf_dir}': {self._conf_file_names}."
+        self.trace(msg)
+        raise Exception(msg)
+
     def _read_and_validate_config_file(
-            self, conf_dir: Path, parent_conf: Dict, valid_protect_scopes: Tuple[str, ...]) -> Tuple[Dict, Optional[Path]]:  # pylint: disable=unsubscriptable-object
+            self, conf_dir: Path, parent_conf: Dict, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
+    ) -> Tuple[Dict, Optional[Path]]:  # pylint: disable=unsubscriptable-object
         """Read config file, validate keys and compile regexes and merge with parent.
 
         Merge parent conf into conf_dir conf (if any) and return the merged dict. The parent conf is not modified.
@@ -148,34 +179,9 @@ class ConfigFiles():
             }
         }
 
-        self.trace(f"Checking for config file in directory: {conf_dir}")
-        num_files = 0
-        conf_file = None
-        for cfn in self._conf_file_names:
-            if (conf_dir/cfn).exists():
-                conf_file = conf_dir/cfn
-                num_files += 1
-
-                if self.ignore_per_directory_config_files:
-                    self.trace(f"Ignoring config file: {conf_file}")
-                    continue
-
-                self.trace(f"Read config file: {conf_file}")
-                with open(conf_file) as cf:
-                    new_config = ast.literal_eval(cf.read())
-                    self.trace(pformat(new_config))
-
-        if self.ignore_per_directory_config_files:
-            return no_conf_file, conf_file
-
-        if num_files != 1:
-            if num_files == 0:
-                self.trace(f"No config file in directory {conf_dir}")
-                return no_conf_file, conf_file
-
-            msg = f"More than one config file in dir '{conf_dir}': {self._conf_file_names}."
-            self.trace(msg)
-            raise Exception(msg)
+        new_config, conf_file = self._get_single_conf_file(conf_dir, ignore_config_files)
+        if not new_config or ignore_config_files:
+            return no_conf_file, None
 
         try:
             protect_conf = new_config[self._fg_key][self._protect_key]
@@ -204,7 +210,7 @@ class ConfigFiles():
         If directory has no parent in the file_groups included dirs, then self.global_config must be supplied as parent_conf.
         """
 
-        new_config, conf_file = self._read_and_validate_config_file(conf_dir, parent_conf, self._valid_dir_protect_scopes)
+        new_config, conf_file = self._read_and_validate_config_file(conf_dir, parent_conf, self._valid_dir_protect_scopes, self.ignore_per_directory_config_files)
         if self.remember_configs:
             self.per_dir_configs[str(conf_dir)] = new_config
         return new_config, conf_file
