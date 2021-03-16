@@ -299,7 +299,7 @@ def check_inherit_global(cfgf, dupe_dir, conf_dirs):
             }
         }
         if cfgf.remember_configs:
-                assert cfgf.per_dir_configs[ddd3] == cfg3
+            assert cfgf.per_dir_configs[ddd3] == cfg3
 
     except AssertionError as ex:
         print(ex)
