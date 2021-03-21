@@ -57,7 +57,7 @@ class ConfigFiles():
     The 'local', 'recursive' and 'global' entries are lists of regex patterns to match against collected 'work_on' files.
     Regexes are checked against the simple filename (i.e. not the full path) unless they contain at least one path separator (os.sep), in
     which case they are checked against the absolute path.
-    All checks are done as regex search (better to protect to much that too little). You can write the regex to match the full name or path if needed.
+    All checks are done as regex search (better to protect too much than too little). You can write the regex to match the full name or path if needed.
 
     Note that for security ast.literal_eval is used to interpret the config, so no code is allowed.
 
