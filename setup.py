@@ -1,16 +1,19 @@
-import os
+from pathlib import Path
 
 from setuptools import setup
 
-PROJECT_ROOT, _ = os.path.split(__file__)
+_HERE = Path(__file__).resolve().parent
+
 PROJECT_NAME = 'file_groups'
 COPYRIGHT = u"Copyright (c) 2018 - 2020 Lars Hupfeldt Nielsen, Hupfeldt IT"
 PROJECT_AUTHORS = u"Lars Hupfeldt Nielsen"
 PROJECT_EMAILS = 'lhn@hupfeldtit.dk'
 PROJECT_URL = "https://github.com/lhupfeldt/file_groups"
 SHORT_DESCRIPTION = "Group files into 'protect' and 'work_on' and provide operations for safe delete/move and symlink handling."
-LONG_DESCRIPTION = open(os.path.join(PROJECT_ROOT, "README.rst")).read()
+LONG_DESCRIPTION = open(_HERE/"README.rst").read()
 
+with open(_HERE/'requirements.txt') as ff:
+    install_requires = [req.strip() for req in  ff.readlines() if req.strip() and req.strip()[0] != "#"]
 
 if __name__ == "__main__":
     setup(
@@ -24,7 +27,7 @@ if __name__ == "__main__":
         include_package_data=True,
         package_data={"file_groups": ["py.typed"]},
         python_requires='>=3.7',
-        install_requires=[],
+        install_requires=install_requires,
         setup_requires='setuptools-version-command~=2.2',
         url=PROJECT_URL,
         description=SHORT_DESCRIPTION,
