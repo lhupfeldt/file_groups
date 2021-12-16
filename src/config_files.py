@@ -145,7 +145,7 @@ class ConfigFiles():
                 return None, None
 
             self.trace(f"Read config file: {conf_file}")
-            with open(conf_file) as cf:
+            with open(conf_file, encoding="utf-8") as cf:
                 new_config = ast.literal_eval(cf.read())
             self.trace(pformat(new_config))
             return new_config, conf_file
