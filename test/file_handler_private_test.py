@@ -14,7 +14,7 @@ from .conftest import same_content_files
 
 @same_content_files('Hi', 'y')
 def test_no_symlink_check_registered_delete_ok(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[])
+    fh = FileHandler([], '.', dry_run=False, protected_regexes=[])
 
     y_abs = str(Path('y').absolute())
     fh._no_symlink_check_registered_delete(y_abs)
@@ -27,7 +27,7 @@ def test_no_symlink_check_registered_delete_ok(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'y')
 def test_no_symlink_check_registered_delete_ok_dry(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[])
+    fh = FileHandler([], '.', dry_run=True, protected_regexes=[])
 
     y_abs = str(Path('y').absolute())
     fh._no_symlink_check_registered_delete(y_abs)
@@ -41,7 +41,7 @@ def test_no_symlink_check_registered_delete_ok_dry(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[re.compile(r'.*a$')], debug=True)
+    fh = FileHandler([], '.', dry_run=False, protected_regexes=[re.compile(r'.*a$')], debug=True)
 
     ya_abs = str(Path('ya').absolute())
     with pytest.raises(AssertionError) as exinfo:
@@ -57,7 +57,7 @@ def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir,
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_dry_protected_matched(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[re.compile(r'.*a$')])
+    fh = FileHandler([], '.', dry_run=True, protected_regexes=[re.compile(r'.*a$')])
 
     ya_abs = str(Path('ya').absolute())
     with pytest.raises(AssertionError) as exinfo:
@@ -70,7 +70,7 @@ def test_no_symlink_check_registered_delete_ok_dry_protected_matched(duplicates_
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_protected_un_matched(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=False, protected_regexes=[re.compile(r'.*b$')])
+    fh = FileHandler([], '.', dry_run=False, protected_regexes=[re.compile(r'.*b$')])
 
     ya_abs = str(Path('ya').absolute())
     fh._no_symlink_check_registered_delete(ya_abs)
@@ -83,7 +83,7 @@ def test_no_symlink_check_registered_delete_ok_protected_un_matched(duplicates_d
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_dry_protected_un_matched(duplicates_dir, capsys):
-    fh = FileHandler([], '.', None, dry_run=True, protected_regexes=[re.compile(r'.*b$')])
+    fh = FileHandler([], '.', dry_run=True, protected_regexes=[re.compile(r'.*b$')])
 
     ya_abs = str(Path('ya').absolute())
     fh._no_symlink_check_registered_delete(ya_abs)

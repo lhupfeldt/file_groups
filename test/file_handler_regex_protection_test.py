@@ -15,7 +15,7 @@ from .utils.file_handler_test_utils import FP
 
 def check_protected_source(action, dupe_dir, capsys):
     try:
-        fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/y')])
+        fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/y')])
         ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
 
         action_msg = action if action == 'delete' else "move/rename"
@@ -54,7 +54,7 @@ def test_delete_protected_source(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
 def test_rename_protected_target(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
 
     with pytest.raises(AssertionError) as exinfo:
@@ -74,7 +74,7 @@ def test_rename_protected_target(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
 def test_move_protected_target(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
 
     with pytest.raises(AssertionError) as exinfo:
@@ -94,7 +94,7 @@ def test_move_protected_target(duplicates_dir, capsys):
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
 
     assert ck.check_rename(dry=True)
@@ -107,7 +107,7 @@ def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, capsy
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
 
     assert ck.check_move(dry=True)
@@ -122,7 +122,7 @@ def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys)
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_rename_unmatched_protection(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
@@ -130,7 +130,7 @@ def test_rename_unmatched_protection(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_move_unmatched_protection(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', capsys)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
@@ -138,7 +138,7 @@ def test_move_unmatched_protection(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_delete_unmatched_protection(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], None, dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', capsys)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)

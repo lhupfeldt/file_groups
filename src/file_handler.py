@@ -7,8 +7,6 @@ import re
 from contextlib import contextmanager
 from typing import Sequence
 
-from .compare_files import CompareFiles
-from .types import FsPath
 from .file_groups import FileGroups
 
 
@@ -31,7 +29,7 @@ class FileHandler(FileGroups):
 
     def __init__(
             self,
-            protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path], fcmp: CompareFiles,
+            protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
             dry_run: bool,
             protected_regexes: Sequence[re.Pattern],
@@ -43,8 +41,6 @@ class FileHandler(FileGroups):
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
             protect_exclude=protect_exclude, work_include=work_include,
             debug=debug)
-
-        self._fcmp = fcmp
 
         self.dry_run = dry_run
         self.delete_symlinks_instead_of_relinking = delete_symlinks_instead_of_relinking
@@ -200,26 +196,6 @@ class FileHandler(FileGroups):
 
     def registered_rename(self, from_path: str, to_path):
         self._registered_move_or_rename(from_path, to_path, is_move=False)
-
-    def compare(self, f1: FsPath, f2: FsPath) -> bool:
-        """Extends CompareFiles.compare with logic to handle 'renamed/moved' files during dry_run."""
-
-        if not self.dry_run:
-            if self._fcmp.compare(f1, f2):
-                print(f"Duplicates: '{f1}' '{f2}'")
-                return True
-
-            return False
-
-        f1_abs = str(Path(f1).absolute())
-        existing_f1 = Path(self.moved_from.get(os.fspath(f1_abs), f1))
-        f2_abs = str(Path(f2).absolute())
-        existing_f2 = Path(self.moved_from.get(os.fspath(f2_abs), f2))
-        if self._fcmp.compare(existing_f1, existing_f2):
-            print(f"Duplicates: '{f1}' '{f2}'")
-            return True
-
-        return False
 
     @contextmanager
     def stats(self):
