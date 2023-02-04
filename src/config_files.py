@@ -11,6 +11,10 @@ from appdirs import AppDirs # type: ignore
 from .types import FsPath
 
 
+class ConfigException(Exception):
+    pass
+
+
 class ConfigFiles():
     r"""Handle config files.
 
@@ -156,7 +160,7 @@ class ConfigFiles():
 
         msg = f"More than one config file in dir '{conf_dir}': {self._conf_file_names}."
         self.trace(msg)
-        raise Exception(msg)
+        raise ConfigException(msg)
 
     def _read_and_validate_config_file(
             self, conf_dir: Path, parent_conf: Dict, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
@@ -186,13 +190,13 @@ class ConfigFiles():
         try:
             protect_conf = new_config[self._fg_key][self._protect_key]
         except KeyError as ex:
-            raise Exception(f"Config file '{conf_file}' is missing mandatory configuration '{self._fg_key}[{self._protect_key}]'.") from ex
+            raise ConfigException(f"Config file '{conf_file}' is missing mandatory configuration '{self._fg_key}[{self._protect_key}]'.") from ex
 
         for key, val in protect_conf.items():
             if key not in valid_protect_scopes:
                 msg = f"The only keys allowed in '{self._fg_key}[{self._protect_key}]' section in the config file '{conf_file}' are: {valid_protect_scopes}. Got: '{key}'."
                 self.trace(msg)
-                raise Exception(msg)
+                raise ConfigException(msg)
 
             protect_conf[key] = set(re.compile(pattern) for pattern in val)
             if key == "recursive":

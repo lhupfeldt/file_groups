@@ -82,8 +82,8 @@ class FileGroups():
         work_dirs_seq: Directories in which to potentially delete/rename/modify files.
             Directory may be a subdirectory of (or the same, for convenient globbing) as a protect_dirs_seq directory.
 
-        protect_exclude: Exclude files matching regex in the protected files (does not apply to symlinks). Default NONE (include ALL).
-        work_include: Only include files matching regex in the may_work_on files (does not apply to symlinks). Default include ALL.
+        protect_exclude: Exclude files matching regex in the protected files (does not apply to symlinks). Default: Include ALL.
+        work_include: Only include files matching regex in the may_work_on files (does not apply to symlinks). Default: Include ALL.
 
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
@@ -96,7 +96,7 @@ class FileGroups():
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
             protect: Sequence[re.Pattern] = (),
-            protect_exclude: re.Pattern = None, work_include: re.Pattern = None,
+            protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
             ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False,
             remember_configs=True,
             debug=False):
@@ -133,7 +133,7 @@ class FileGroups():
 
         self.collect()
 
-    def collect(self):
+    def collect(self) -> None:
         """Split files into groups.
 
         E.g.:

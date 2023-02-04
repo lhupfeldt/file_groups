@@ -12,7 +12,7 @@ from .config_files_test import set_conf_dirs, dir_conf_files
 @same_content_files('C', 'df/AND_ME.JPG', 'df/df/AND_ME.JPG', 'df/df/df/And_Me.jpg', 'df/df/df/and_me.jpeg')
 @same_content_files('D', 'df/df/df/df/gusr1.mpg', 'df/df/df/df/gusr1aaa.jpg', 'df/gsys2zzz.txt')  # Protected with "global" in condig dirs.
 @same_content_files('F', 'df/imatchopt.hello', 'ki/df/df/IMATCHOPT.hi')  # Protected everywhere with 'protect' option
-@same_content_files('G', 'df/P1a.jpg', 'df/P1.jpg', 'ki/df/P2.jpg' 'df/PR1.jpg', 'ki/df/P3.jpg')  # Protected with 'local' or 'recursive' in condif dirs, so NOT here.
+@same_content_files('G', 'df/P1a.jpg', 'df/P1.jpg', 'ki/df/P2.jpg', 'df/PR1.jpg', 'ki/df/P3.jpg')  # Protected with 'local' or 'recursive' in config dirs, so NOT here.
 @dir_conf_files([], [r'KEEP_ME\..*'], 'ki/.file_groups.conf')
 @dir_conf_files([r'KEEP_ME.jpg'], [r'(?i)and_me.jp[e]?g'], 'df/df/.file_groups.conf')
 def test_file_groups_group_files_by_config_protect(duplicates_dir, set_conf_dirs):
@@ -28,6 +28,5 @@ def test_file_groups_group_files_by_config_protect(duplicates_dir, set_conf_dirs
             'df/df/df/df/gusr1aaa.jpg', 'df/gsys2zzz.txt', 'df/imatchopt.hello',
             'ki/Af11.jpg', 'ki/df/KEEP_ME.JPEG', 'ki/df/df/IMATCHOPT.hi', 'ki/ki/ki/ki/Af11.jpg')
         assert ck.ckfl(
-            'may_work_on.files',
-            'df/AND_ME.JPG', 'df/Bf11.jpg', 'df/P1.jpg', 'df/P1a.jpg', 'df/df/df/df/KEEP_ME.jpg', 'df/df/df/df/gusr1.mpg', 'ki/df/Af11.jpg',
-            'ki/df/NOT_ME.jpeg', 'ki/df/P2.jpg' 'df/PR1.jpg', 'ki/df/P3.jpg')
+            'may_work_on.files', 'df/AND_ME.JPG', 'df/Bf11.jpg', 'df/P1.jpg', 'df/P1a.jpg', 'df/PR1.jpg', 'df/df/df/df/KEEP_ME.jpg', 'df/df/df/df/gusr1.mpg',
+            'ki/df/Af11.jpg', 'ki/df/NOT_ME.jpeg', 'ki/df/P2.jpg', 'ki/df/P3.jpg')

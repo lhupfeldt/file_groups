@@ -1,2 +1,2 @@
 # https://github.com/python/mypy/issues/11768
-mypy==0.910
+mypy>=0.991

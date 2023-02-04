@@ -33,7 +33,7 @@ class FileHandler(FileGroups):
             *,
             dry_run: bool,
             protected_regexes: Sequence[re.Pattern],
-            protect_exclude: re.Pattern = None, work_include: re.Pattern = None,
+            protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
             delete_symlinks_instead_of_relinking=False,
             debug=False):
         super().__init__(
