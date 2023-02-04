@@ -10,7 +10,7 @@ _PY_VERSIONS = ['3.11', '3.10']
 nox.options.error_on_missing_interpreters = True
 
 
-@nox.session(reuse_venv=True)
+@nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
     session.install('-r', str(_HERE/'requirements.txt'), '-r', str(_TEST_DIR/'mypy_requirements.txt'))
     session.run('mypy', '-v', str(_HERE/'src'))

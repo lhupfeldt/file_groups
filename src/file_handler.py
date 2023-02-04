@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 import shutil
 import re
 from contextlib import contextmanager
-from typing import Dict, Sequence, Set
+from typing import Sequence
 
 from .compare_files import CompareFiles
 from .types import FsPath
@@ -48,10 +50,10 @@ class FileHandler(FileGroups):
         self.delete_symlinks_instead_of_relinking = delete_symlinks_instead_of_relinking
 
         # Holds paths of deleted symlinks
-        self.deleted_symlinks: Set[str] = set()
+        self.deleted_symlinks: set[str] = set()
 
         # Set to point to path of original file when 'registered_move' or 'registered_rename' is called during dry_run
-        self.moved_from: Dict[str, str] = {}
+        self.moved_from: dict[str, str] = {}
 
         self.num_deleted = 0
         self.num_renamed = 0

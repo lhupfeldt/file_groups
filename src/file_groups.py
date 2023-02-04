@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from os import DirEntry
 from pathlib import Path
@@ -6,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 from enum import Enum
-from typing import Optional, Dict, List, Sequence, Set
+from typing import Sequence
 
 from .config_files import ConfigFiles
 
@@ -20,11 +22,11 @@ class GroupType(Enum):
 class _Group():
     typ: GroupType
 
-    dirs: Dict[str, Path]
+    dirs: dict[str, Path]
 
-    files: Dict[str, DirEntry]
-    symlinks: Dict[str, DirEntry]
-    symlinks_by_abs_points_to: Dict[str, List[DirEntry]]
+    files: dict[str, DirEntry]
+    symlinks: dict[str, DirEntry]
+    symlinks_by_abs_points_to: dict[str, list[DirEntry]]
 
     # For stats only
     num_directories: int = 0
@@ -35,7 +37,7 @@ class _Group():
 
 @dataclass
 class _IncludeMatchGroup(_Group):
-    include: Optional[re.Pattern] = None  # pylint: disable=unsubscriptable-object
+    include: re.Pattern|None = None  # pylint: disable=unsubscriptable-object
 
     def add_entry_match(self, entry, *, debug):
         if not self.include:
@@ -52,7 +54,7 @@ class _IncludeMatchGroup(_Group):
 
 @dataclass
 class _ExcludeMatchGroup(_Group):
-    exclude: Optional[re.Pattern] = None  # pylint: disable=unsubscriptable-object
+    exclude: re.Pattern|None = None  # pylint: disable=unsubscriptable-object
 
     def add_entry_match(self, entry, *, debug):
         if not self.exclude:
@@ -111,9 +113,9 @@ class FileGroups():
             debug=debug)
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
-        protect_dirs: Dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
+        protect_dirs: dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
 
-        work_dirs: Dict[str, Path] = {}
+        work_dirs: dict[str, Path] = {}
         for dp in work_dirs_seq:
             real_dp = os.path.abspath(os.path.realpath(dp))
             if real_dp in protect_dirs:
@@ -178,9 +180,9 @@ class FileGroups():
             if self.debug:
                 print(*args, **kwargs)
 
-        checked_dirs: Set[str] = set()
+        checked_dirs: set[str] = set()
 
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: Dict):
+        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: dict):
             """Find all files belonging to 'group'"""
             trace(f'find {group.typ.name}:', abs_dir_path)
             if abs_dir_path in checked_dirs:

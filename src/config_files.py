@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import ast
 import os
 import re
 from pathlib import Path
 import itertools
 from pprint import pformat
-from typing import Mapping, Dict, Tuple, Sequence, Optional
+from typing import Mapping, Tuple, Sequence
 
 from appdirs import AppDirs # type: ignore
 
@@ -73,9 +75,9 @@ class ConfigFiles():
         debug: Be extremely verbose.
 
     Members:
-       global_config: Dict
+       global_config: dict
        remember_configs: Whether per directory resolved/merged configs are stored in `dir_configs`.
-       dir_configs: Dict[str: Dict] Mapping from dir name to directory specific config dict. Only if remember_configs is True.
+       dir_configs: dict[str: dict] Mapping from dir name to directory specific config dict. Only if remember_configs is True.
     """
 
     _conf_file_names = [".file_groups.conf", "file_groups.conf"]
@@ -91,7 +93,7 @@ class ConfigFiles():
         self.remember_configs = remember_configs
         self.debug = debug
 
-        self.per_dir_configs: Dict[str, Dict] = {}  # key is abs_dir_path, value is config dict
+        self.per_dir_configs: dict[str, dict] = {}  # key is abs_dir_path, value is config dict
         self.global_config = {
             "file_groups": {
                 "protect": {
@@ -132,7 +134,7 @@ class ConfigFiles():
         if self.debug:
             print(*args, **kwargs)
 
-    def _get_single_conf_file(self, conf_dir: Path, ignore_config_files: bool) -> Tuple[Optional[Dict], Optional[Path]]:
+    def _get_single_conf_file(self, conf_dir: Path, ignore_config_files: bool) -> Tuple[dict|None, Path|None]:
         """Return the config file content and path if any config file is found in conf_dir. Error if two are found."""
         self.trace(f"Checking for config file in directory: {conf_dir}")
 
@@ -163,8 +165,8 @@ class ConfigFiles():
         raise ConfigException(msg)
 
     def _read_and_validate_config_file(
-            self, conf_dir: Path, parent_conf: Dict, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
-    ) -> Tuple[Dict, Optional[Path]]:  # pylint: disable=unsubscriptable-object
+            self, conf_dir: Path, parent_conf: dict, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
+    ) -> Tuple[dict, Path|None]:  # pylint: disable=unsubscriptable-object
         """Read config file, validate keys and compile regexes and merge with parent.
 
         Merge parent conf into conf_dir conf (if any) and return the merged dict. The parent conf is not modified.
@@ -208,7 +210,7 @@ class ConfigFiles():
         self.trace(f"Merged directory config:\n{pformat(new_config)}")
         return new_config, conf_file
 
-    def dir_config(self, conf_dir: Path, parent_conf: Dict) -> Tuple[Dict, Optional[Path]]:  # pylint: disable=unsubscriptable-object
+    def dir_config(self, conf_dir: Path, parent_conf: dict) -> Tuple[dict, Path|None]:  # pylint: disable=unsubscriptable-object
         """Read and merge config file from directory 'conf_dir' with 'parent_conf'.
 
         If directory has no parent in the file_groups included dirs, then self.global_config must be supplied as parent_conf.

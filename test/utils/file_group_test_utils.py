@@ -1,5 +1,5 @@
 import os
-from typing import Mapping, List
+from typing import Mapping
 
 from file_groups.file_groups import FileGroups
 
@@ -17,7 +17,7 @@ def ckfl(attr_name, ll, *exp_names):
     return False
 
 
-def cksfl(ll, duplicates_dir=None, exp: Mapping[str, List] = None):
+def cksfl(ll, duplicates_dir=None, exp: Mapping[str, list] = None):
     """Check symlink list against expected file names"""
     cwd = os.getcwd()
 
@@ -62,7 +62,7 @@ class FGC():
         self.checked.add(attr_name)
         return ckfl(attr_name, self._ggetattr(attr_name), *rel_paths)
 
-    def cksfl(self, attr_name, rel_path_to_symlinks: Mapping[str, List[str]]):
+    def cksfl(self, attr_name, rel_path_to_symlinks: Mapping[str, list[str]]):
         self.checked.add(attr_name)
         return cksfl(self._ggetattr(attr_name), self.duplicates_dir, rel_path_to_symlinks)
 
