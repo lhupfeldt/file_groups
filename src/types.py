@@ -3,4 +3,4 @@ from pathlib import Path
 from typing import Union
 
 
-FsPath = Union[DirEntry, Path]  # pylint: disable=unsubscriptable-object
+FsPath = Union[DirEntry, Path]

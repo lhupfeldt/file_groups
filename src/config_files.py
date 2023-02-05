@@ -167,7 +167,7 @@ class ConfigFiles():
 
     def _read_and_validate_config_file(
             self, conf_dir: Path, parent_conf: dict, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
-    ) -> Tuple[dict, Path|None]:  # pylint: disable=unsubscriptable-object
+    ) -> Tuple[dict, Path|None]:
         """Read config file, validate keys and compile regexes and merge with parent.
 
         Merge parent conf into conf_dir conf (if any) and return the merged dict. The parent conf is not modified.
@@ -211,7 +211,7 @@ class ConfigFiles():
         self.trace(f"Merged directory config:\n{pformat(new_config)}")
         return new_config, conf_file
 
-    def dir_config(self, conf_dir: Path, parent_conf: dict) -> Tuple[dict, Path|None]:  # pylint: disable=unsubscriptable-object
+    def dir_config(self, conf_dir: Path, parent_conf: dict) -> Tuple[dict, Path|None]:
         """Read and merge config file from directory 'conf_dir' with 'parent_conf'.
 
         If directory has no parent in the file_groups included dirs, then self.global_config must be supplied as parent_conf.

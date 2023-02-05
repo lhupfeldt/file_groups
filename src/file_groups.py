@@ -37,7 +37,7 @@ class _Group():
 
 @dataclass
 class _IncludeMatchGroup(_Group):
-    include: re.Pattern|None = None  # pylint: disable=unsubscriptable-object
+    include: re.Pattern|None = None
 
     def add_entry_match(self, entry, *, debug):
         if not self.include:
@@ -54,7 +54,7 @@ class _IncludeMatchGroup(_Group):
 
 @dataclass
 class _ExcludeMatchGroup(_Group):
-    exclude: re.Pattern|None = None  # pylint: disable=unsubscriptable-object
+    exclude: re.Pattern|None = None
 
     def add_entry_match(self, entry, *, debug):
         if not self.exclude:

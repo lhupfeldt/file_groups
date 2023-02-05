@@ -72,8 +72,8 @@ def _test_key_shortener(key_prefix, key_postfix):
     return key_prefix + '.' + key_postfix.replace(tfunc_prefix, '')
 
 
-@fixture
-def duplicates_dir(request, monkeypatch):
+@fixture(name="duplicates_dir")
+def _fixture_duplicates_dir(request, monkeypatch):
     """Fixture expects 'same_content_files' and/or 'different_content_files' and possibly 'symlink_files' decorators to have been called for the test function."""
 
     key_prefix = underscore_test_re.sub('', request.node.module.__name__)
@@ -97,7 +97,7 @@ def duplicates_dir(request, monkeypatch):
         has_files = True
 
     if not has_files:
-        raise TestSetupException(duplicates_dir.__doc__)
+        raise TestSetupException(_fixture_duplicates_dir.__doc__)
 
     monkeypatch.chdir(out_dir)
     return out_dir
@@ -137,7 +137,7 @@ def _test_files_creator_decorator(func, file_content_funcs, new_file_content_fun
         _check_test_file_name(out_dir, fn)
 
     @functools.wraps(func)
-    def wrapper(duplicates_dir, *args, **kwargs):  # 'duplicates_dir' is fixture pylint: disable=redefined-outer-name
+    def wrapper(duplicates_dir, *args, **kwargs):
         return func(duplicates_dir, *args, **kwargs)
 
     return wrapper
