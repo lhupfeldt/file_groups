@@ -124,8 +124,8 @@ class FileHandler(FileGroups):
             if symlnk_path in self.may_work_on.files or symlnk_path in self.may_work_on.symlinks:
                 self._no_symlink_check_registered_delete(symlnk_path)
             else:
-                # TODO
-                print("Created broken symlink '{points_from}' -> '{points_to}'")
+                # TODO, verify message
+                print(f"Created broken symlink '{symlnk_path}' -> '{points_to}'")
             return
 
         abs_keep_path = Path(keep_path).absolute()
@@ -171,19 +171,17 @@ class FileHandler(FileGroups):
         assert abs_tp not in self.must_protect.files, f"Oops, trying to overwrite protected file '{Path(to_path).absolute()}' with '{from_path}'."
         assert abs_tp not in self.must_protect.symlinks, f"Oops, trying to overwrite protected symlink '{to_path}' with '{from_path}'."
 
-        tp = os.fspath(to_path)
-
         if self.dry_run:
             self.moved_from[abs_tp] = from_path
 
         if is_move:
-            print("    moving:", from_path, 'to', tp)
+            print("    moving:", from_path, 'to', os.fspath(to_path))
             if not self.dry_run:
                 shutil.move(from_path, to_path)
 
             self.num_moved += 1
         else:
-            print("    renaming:", from_path, 'to', tp)
+            print("    renaming:", from_path, 'to', os.fspath(to_path))
             if not self.dry_run:
                 os.rename(from_path, to_path)
 

@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 import itertools
 from pprint import pformat
-from typing import Mapping, Tuple, Sequence
+from typing import Mapping, Tuple, Sequence, cast
 
 from appdirs import AppDirs # type: ignore
 
@@ -14,7 +14,7 @@ from .types import FsPath
 
 
 class ConfigException(Exception):
-    pass
+    """Invalid configuration"""
 
 
 class ConfigFiles():
@@ -63,7 +63,7 @@ class ConfigFiles():
     The 'local', 'recursive' and 'global' entries are lists of regex patterns to match against collected 'work_on' files.
     Regexes are checked against the simple filename (i.e. not the full path) unless they contain at least one path separator (os.sep), in
     which case they are checked against the absolute path.
-    All checks are done as regex search (better to protect too much than too little). You can write the regex to match the full name or path if needed.
+    All checks are done as regex *search* (better to protect too much than too little). Write the regex to match the full name or path if needed.
 
     Note that for security ast.literal_eval is used to interpret the config, so no code is allowed.
 
@@ -86,9 +86,9 @@ class ConfigFiles():
     _valid_dir_protect_scopes = ("local", "recursive")
     _valid_config_dir_protect_scopes = ("local", "recursive", "global")
 
-    # TODO: protect: Sequence[re.Pattern] = (), but getting mypy error
     def __init__(
-            self, protect: Sequence = (), ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, debug=False):
+            self, protect: Sequence[re.Pattern] = (),
+            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, debug=False):
         super().__init__()
         self.remember_configs = remember_configs
         self.debug = debug
@@ -120,7 +120,7 @@ class ConfigFiles():
                     self.per_dir_configs[str(conf_dir)] = new_config
 
                 fpt = new_config["file_groups"]["protect"]
-                gfpt["recursive"].update(fpt.get("global", ()))
+                cast(set, gfpt["recursive"]).update(fpt.get("global", ()))
                 self.trace(f"Merged global config:\n{pformat(new_config)}")
 
                 try:
@@ -131,6 +131,7 @@ class ConfigFiles():
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     def trace(self, *args, **kwargs):
+        """call `print` if debug is true"""
         if self.debug:
             print(*args, **kwargs)
 
@@ -151,8 +152,8 @@ class ConfigFiles():
                 return None, None
 
             self.trace(f"Read config file: {conf_file}")
-            with open(conf_file, encoding="utf-8") as cf:
-                new_config = ast.literal_eval(cf.read())
+            with open(conf_file, encoding="utf-8") as fh:
+                new_config = ast.literal_eval(fh.read())
             self.trace(pformat(new_config))
             return new_config, conf_file
 
@@ -216,14 +217,17 @@ class ConfigFiles():
         If directory has no parent in the file_groups included dirs, then self.global_config must be supplied as parent_conf.
         """
 
-        new_config, conf_file = self._read_and_validate_config_file(conf_dir, parent_conf, self._valid_dir_protect_scopes, self.ignore_per_directory_config_files)
+        new_config, conf_file = self._read_and_validate_config_file(
+            conf_dir, parent_conf, self._valid_dir_protect_scopes, self.ignore_per_directory_config_files)
         if self.remember_configs:
             self.per_dir_configs[str(conf_dir)] = new_config
         return new_config, conf_file
 
     def is_protected(self, ff: FsPath, dir_config: Mapping):
         """If ff id protected by a regex patterm then return the pattern, otherwise return None."""
-        for pattern in itertools.chain(dir_config[self._fg_key][self._protect_key]["local"], dir_config[self._fg_key][self._protect_key]["recursive"]):
+
+        cfg_protected = dir_config[self._fg_key][self._protect_key]
+        for pattern in itertools.chain(cfg_protected["local"], cfg_protected["recursive"]):
             if os.sep in str(pattern):
                 # Match against full path
                 assert os.path.isabs(ff), f"Expected absolute path, got '{ff}'"

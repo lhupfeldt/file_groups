@@ -14,8 +14,8 @@ from .config_files import ConfigFiles
 
 
 class GroupType(Enum):
-    must_protect = 0
-    may_work_on = 1
+    MUST_PROTECT = 0
+    MAY_WORK_ON = 1
 
 
 @dataclass
@@ -116,22 +116,22 @@ class FileGroups():
         protect_dirs: dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
 
         work_dirs: dict[str, Path] = {}
-        for dp in work_dirs_seq:
-            real_dp = os.path.abspath(os.path.realpath(dp))
+        for input_work_dir in work_dirs_seq:
+            real_dp = os.path.abspath(os.path.realpath(input_work_dir))
             if real_dp in protect_dirs:
                 specified_protect_dir = protect_dirs[real_dp]
 
-                if dp == specified_protect_dir:
-                    print(f"Ignoring 'work' dir '{dp}' which is also a 'protect' dir.")
+                if input_work_dir == specified_protect_dir:
+                    print(f"Ignoring 'work' dir '{input_work_dir}' which is also a 'protect' dir.")
                     continue
 
-                print(f"Ignoring 'work' dir '{real_dp}' (from argument '{dp}') which is also a 'protect' dir (from argument '{specified_protect_dir}').")
+                print(f"Ignoring 'work' dir '{real_dp}' (from argument '{input_work_dir}') which is also a 'protect' dir (from argument '{specified_protect_dir}').")
                 continue
 
-            work_dirs[real_dp] = dp
+            work_dirs[real_dp] = input_work_dir
 
-        self.must_protect = _ExcludeMatchGroup(GroupType.must_protect, protect_dirs, {}, {}, defaultdict(list), exclude=protect_exclude)
-        self.may_work_on = _IncludeMatchGroup(GroupType.may_work_on, work_dirs, {}, {}, defaultdict(list), include=work_include)
+        self.must_protect = _ExcludeMatchGroup(GroupType.MUST_PROTECT, protect_dirs, {}, {}, defaultdict(list), exclude=protect_exclude)
+        self.may_work_on = _IncludeMatchGroup(GroupType.MAY_WORK_ON, work_dirs, {}, {}, defaultdict(list), include=work_include)
 
         self.collect()
 
@@ -206,7 +206,7 @@ class FileGroups():
                     continue
 
                 current_group = group
-                if group.typ is GroupType.may_work_on:
+                if group.typ is GroupType.MAY_WORK_ON:
                     # We need to check for match against configured protect patterns, if match, then the file must got to protect group instead
                     pattern = self.config_files.is_protected(entry, dir_config)
                     if pattern:
@@ -231,21 +231,21 @@ class FileGroups():
 
             checked_dirs.add(abs_dir_path)
 
-        for dd in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
-            pd = Path(dd)
-            while len(pd.parts) > 1:
-                parent_conf = self.config_files.per_dir_configs.get(dd)
+        for any_dir in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
+            parent_dir = Path(any_dir)
+            while len(parent_dir.parts) > 1:
+                parent_conf = self.config_files.per_dir_configs.get(any_dir)
                 if parent_conf:
                     break
 
-                pd = pd.parent
+                parent_dir = parent_dir.parent
             else:
                 parent_conf = self.config_files.global_config
 
-            if dd in self.must_protect.dirs:
-                find_group(dd, self.must_protect, self.may_work_on, parent_conf)
+            if any_dir in self.must_protect.dirs:
+                find_group(any_dir, self.must_protect, self.may_work_on, parent_conf)
             else:
-                find_group(dd, self.may_work_on, self.must_protect, parent_conf)
+                find_group(any_dir, self.may_work_on, self.must_protect, parent_conf)
 
     def dump(self):
         """Print collected files. This may be A LOT of output for large directories."""
@@ -263,8 +263,8 @@ class FileGroups():
         print()
 
         print('must protect symlinks by absolute points to:')
-        for abs_points_to, ee in self.must_protect.symlinks_by_abs_points_to.items():
-            print(ee, '->', abs_points_to)
+        for abs_points_to, lnks in self.must_protect.symlinks_by_abs_points_to.items():
+            print(lnks, '->', abs_points_to)
         print()
 
         print('may work on:')
@@ -278,8 +278,8 @@ class FileGroups():
         print()
 
         print('may work on symlinks by absolute points to:')
-        for abs_points_to, ee in self.may_work_on.symlinks_by_abs_points_to.items():
-            print(ee, '->', abs_points_to)
+        for abs_points_to, lnks in self.may_work_on.symlinks_by_abs_points_to.items():
+            print(lnks, '->', abs_points_to)
         print()
 
         print()

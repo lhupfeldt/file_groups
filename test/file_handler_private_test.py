@@ -50,7 +50,8 @@ def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir,
     assert f"Oops, trying to delete protected file '{str(ya_abs)}'." in str(exinfo.value)
 
     out, _ = capsys.readouterr()
-    assert f"find may_work_on - '{duplicates_dir}/ya' is protected by regex re.compile('.*a$'), assigning to group must_protect instead." in out
+    exp_msg = f"find MAY_WORK_ON - '{duplicates_dir}/ya' is protected by regex re.compile('.*a$'), assigning to group MUST_PROTECT instead."
+    assert exp_msg in out
 
     assert Path(ya_abs).exists()
 

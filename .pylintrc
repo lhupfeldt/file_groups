@@ -114,7 +114,7 @@ argument-naming-style=snake_case
 # Regular expression matching correct argument names. Overrides argument-
 # naming-style. If left empty, argument names will be checked with the set
 # naming style.
-argument-rgx=[a-z_][a-z0-9_]{2,30}$
+#argument-rgx=
 
 # Naming style matching correct attribute names.
 attr-naming-style=snake_case
@@ -122,7 +122,7 @@ attr-naming-style=snake_case
 # Regular expression matching correct attribute names. Overrides attr-naming-
 # style. If left empty, attribute names will be checked with the set naming
 # style.
-attr-rgx=[a-z_][a-z0-9_]{2,30}$
+#attr-rgx=
 
 # Bad variable names which should always be refused, separated by a comma.
 bad-names=foo,
@@ -142,7 +142,7 @@ class-attribute-naming-style=any
 # Regular expression matching correct class attribute names. Overrides class-
 # attribute-naming-style. If left empty, class attribute names will be checked
 # with the set naming style.
-class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$
+#class-attribute-rgx=
 
 # Naming style matching correct class constant names.
 class-const-naming-style=UPPER_CASE
@@ -157,7 +157,7 @@ class-naming-style=PascalCase
 
 # Regular expression matching correct class names. Overrides class-naming-
 # style. If left empty, class names will be checked with the set naming style.
-class-rgx=[A-Z_][a-zA-Z0-9]+$
+#class-rgx=
 
 # Naming style matching correct constant names.
 const-naming-style=UPPER_CASE
@@ -165,7 +165,7 @@ const-naming-style=UPPER_CASE
 # Regular expression matching correct constant names. Overrides const-naming-
 # style. If left empty, constant names will be checked with the set naming
 # style.
-const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+#const-rgx=
 
 # Minimum line length for functions/classes that require docstrings, shorter
 # ones are exempt.
@@ -177,15 +177,21 @@ function-naming-style=snake_case
 # Regular expression matching correct function names. Overrides function-
 # naming-style. If left empty, function names will be checked with the set
 # naming style.
-function-rgx=[a-z_][a-z0-9_]{2,30}$
+#function-rgx=
 
 # Good variable names which should always be accepted, separated by a comma.
-good-names=i,
-           j,
-           k,
+# LHN modified
+good-names=ii,
+           jj,
+           kk,
            ex,
            Run,
-           _
+           _,
+           fn,  # file name
+           ff,  # file name object
+           fh,  # file handle
+           ln,  # line
+           dt   # date_time object
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
@@ -200,21 +206,21 @@ inlinevar-naming-style=any
 # Regular expression matching correct inline iteration names. Overrides
 # inlinevar-naming-style. If left empty, inline iteration names will be checked
 # with the set naming style.
-inlinevar-rgx=[A-Za-z_][A-Za-z0-9_]*$
+#inlinevar-rgx=
 
 # Naming style matching correct method names.
 method-naming-style=snake_case
 
 # Regular expression matching correct method names. Overrides method-naming-
 # style. If left empty, method names will be checked with the set naming style.
-method-rgx=[a-z_][a-z0-9_]{2,30}$
+#method-rgx=
 
 # Naming style matching correct module names.
 module-naming-style=snake_case
 
 # Regular expression matching correct module names. Overrides module-naming-
 # style. If left empty, module names will be checked with the set naming style.
-module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
+#module-rgx=
 
 # Colon-delimited sets of names that determine each other's naming style when
 # the name regexes allow several styles.
@@ -222,7 +228,7 @@ name-group=
 
 # Regular expression which should only match function or class names that do
 # not require a docstring.
-no-docstring-rgx=__.*__
+no-docstring-rgx=^_
 
 # List of decorators that produce properties, such as abc.abstractproperty. Add
 # to this list to register other decorators that produce valid properties.
@@ -239,7 +245,7 @@ variable-naming-style=snake_case
 # Regular expression matching correct variable names. Overrides variable-
 # naming-style. If left empty, variable names will be checked with the set
 # naming style.
-variable-rgx=[a-z_][a-z0-9_]{2,30}$
+#variable-rgx=
 
 
 [CLASSES]
@@ -250,7 +256,8 @@ check-protected-access-in-special-methods=no
 # List of method names used to declare (i.e. assign) instance attributes.
 defining-attr-methods=__init__,
                       __new__,
-                      setUp
+                      setUp,
+                      __post_init__
 
 # List of member names, which should be excluded from the protected access
 # warning.
@@ -278,10 +285,12 @@ exclude-too-few-public-methods=
 ignored-parents=
 
 # Maximum number of arguments for function / method.
-max-args=5
+# LHN modified
+max-args=6
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=7
+# LHN modified
+max-attributes=12
 
 # Maximum number of boolean expressions in an if statement (see R0916).
 max-bool-expr=5
@@ -299,20 +308,21 @@ max-parents=7
 max-public-methods=20
 
 # Maximum number of return / yield for function / method body.
-max-returns=6
+# LHN modified
+max-returns=10
 
 # Maximum number of statements in function / method body.
 max-statements=50
 
 # Minimum number of public methods for a class (see R0903).
-min-public-methods=2
+# LHN modified
+min-public-methods=1
 
 
 [EXCEPTIONS]
 
 # Exceptions that will emit a warning when caught.
-# LHN modified
-overgeneral-exceptions=builtins.Exception
+overgeneral-exceptions=builtins.BaseException,builtins.Exception
 
 
 [FORMAT]
@@ -331,7 +341,8 @@ indent-after-paren=4
 indent-string='    '
 
 # Maximum number of characters on a single line.
-max-line-length=135
+# LHN modified
+max-line-length=180
 
 # Maximum number of lines in a module.
 max-module-lines=1000
@@ -358,10 +369,7 @@ allow-reexport-from-package=no
 allow-wildcard-with-all=no
 
 # Deprecated modules which should not be used, separated by a comma.
-deprecated-modules=regsub,
-                   TERMIOS,
-                   Bastion,
-                   rexec
+deprecated-modules=
 
 # Output a graph (.gv or any supported image format) of external dependencies
 # to the given file (report RP0402 must not be disabled).
@@ -418,25 +426,14 @@ confidence=HIGH,
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
+# LHN modified
 disable=raw-checker-failed,
         bad-inline-option,
         locally-disabled,
         file-ignored,
         suppressed-message,
         useless-suppression,
-        deprecated-pragma,
-        use-symbolic-message-instead,
-        too-many-ancestors,
-        too-many-instance-attributes,
-        too-many-arguments,
-        line-too-long,
-        missing-module-docstring,
-        missing-class-docstring,
-        missing-function-docstring,
-        invalid-name,
-        too-many-public-methods,
-        too-few-public-methods,
-        multiple-imports
+        deprecated-pragma
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -455,7 +452,9 @@ timeout-methods=requests.api.delete,requests.api.get,requests.api.head,requests.
 [MISCELLANEOUS]
 
 # List of note tags to take in consideration, separated by a comma.
-notes=FIXME,XXX,[^_]TODO
+notes=FIXME,
+      XXX,
+      TODO
 
 # Regular expression of note tags to take in consideration.
 notes-rgx=
@@ -480,7 +479,7 @@ never-returning-functions=sys.exit,argparse.parse_error
 # 'convention', and 'info' which contain the number of messages in each
 # category, as well as 'statement' which is the total number of statements
 # analyzed. This score is used by the global evaluation report (RP0004).
-evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+evaluation=max(0, 0 if fatal else 10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10))
 
 # Template used to display messages. This is a python new-style format string
 # used to format the message information. See doc for all details.
@@ -507,7 +506,7 @@ ignore-comments=yes
 ignore-docstrings=yes
 
 # Imports are removed from the similarity computation
-ignore-imports=no
+ignore-imports=yes
 
 # Signatures are removed from the similarity computation
 ignore-signatures=yes
@@ -566,9 +565,7 @@ contextmanager-decorators=contextlib.contextmanager
 # List of members which are set dynamically and missed by pylint inference
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
-generated-members=REQUEST,
-                  acl_users,
-                  aq_parent
+generated-members=
 
 # Tells whether to warn about missing members when the owner of the attribute
 # is inferred to be None.
@@ -591,7 +588,7 @@ ignored-checks-for-mixins=no-member,
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
 # qualified names.
-ignored-classes=SQLObject
+ignored-classes=optparse.Values,thread._local,_thread._local,argparse.Namespace
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.
@@ -631,10 +628,10 @@ callbacks=cb_,
 
 # A regular expression matching the name of dummy variables (i.e. expected to
 # not be used).
-dummy-variables-rgx=_$|dummy|_.*
+dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
 
 # Argument names that match this expression will be ignored.
-ignored-argument-names=_.*
+ignored-argument-names=_.*|^ignored_|^unused_
 
 # Tells whether we should check for unused import in __init__ files.
 init-import=no

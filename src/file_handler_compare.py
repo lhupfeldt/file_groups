@@ -40,22 +40,22 @@ class FileHandlerCompare(FileHandler):
 
         self._fcmp = fcmp
 
-    def compare(self, f1: FsPath, f2: FsPath) -> bool:
+    def compare(self, fsp1: FsPath, fsp2: FsPath) -> bool:
         """Extends CompareFiles.compare with logic to handle 'renamed/moved' files during dry_run."""
 
         if not self.dry_run:
-            if self._fcmp.compare(f1, f2):
-                print(f"Duplicates: '{f1}' '{f2}'")
+            if self._fcmp.compare(fsp1, fsp2):
+                print(f"Duplicates: '{fsp1}' '{fsp2}'")
                 return True
 
             return False
 
-        f1_abs = str(Path(f1).absolute())
-        existing_f1 = Path(self.moved_from.get(os.fspath(f1_abs), f1))
-        f2_abs = str(Path(f2).absolute())
-        existing_f2 = Path(self.moved_from.get(os.fspath(f2_abs), f2))
-        if self._fcmp.compare(existing_f1, existing_f2):
-            print(f"Duplicates: '{f1}' '{f2}'")
+        fsp1_abs = str(Path(fsp1).absolute())
+        existing_fsp1 = Path(self.moved_from.get(os.fspath(fsp1_abs), fsp1))
+        fsp2_abs = str(Path(fsp2).absolute())
+        existing_fsp2 = Path(self.moved_from.get(os.fspath(fsp2_abs), fsp2))
+        if self._fcmp.compare(existing_fsp1, existing_fsp2):
+            print(f"Duplicates: '{fsp1}' '{fsp2}'")
             return True
 
         return False
