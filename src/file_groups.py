@@ -85,6 +85,7 @@ class FileGroups():
             Directory may be a subdirectory of (or the same, for convenient globbing) as a protect_dirs_seq directory.
 
         protect_exclude: Exclude files matching regex in the protected files (does not apply to symlinks). Default: Include ALL.
+            Note: Since these files are excluded from protection, it means they er NOT protected!
         work_include: Only include files matching regex in the may_work_on files (does not apply to symlinks). Default: Include ALL.
 
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
