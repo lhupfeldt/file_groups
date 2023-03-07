@@ -8,9 +8,13 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 from enum import Enum
+import logging
 from typing import Sequence
 
 from .config_files import ConfigFiles
+
+
+_LOG = logging.getLogger(__name__)
 
 
 class GroupType(Enum):
@@ -32,21 +36,20 @@ class _Group():
     num_directories: int = 0
     num_directory_symlinks: int = 0
 
-    def add_entry_match(self, entry, *, debug):
+    def add_entry_match(self, entry):
         """Abstract, but abstract and dataclass does not work with mypy. https://github.com/python/mypy/issues/500"""
 
 @dataclass
 class _IncludeMatchGroup(_Group):
     include: re.Pattern|None = None
 
-    def add_entry_match(self, entry, *, debug):
+    def add_entry_match(self, entry):
         if not self.include:
             self.files[entry.path] = entry
             return
 
         match = self.include.match(entry.name)
-        if debug:
-            print(f' - include {self.include} match {match}')
+        _LOG.debug(" - include %s, match %s", self.include, match)
 
         if match:
             self.files[entry.path] = entry
@@ -56,14 +59,13 @@ class _IncludeMatchGroup(_Group):
 class _ExcludeMatchGroup(_Group):
     exclude: re.Pattern|None = None
 
-    def add_entry_match(self, entry, *, debug):
+    def add_entry_match(self, entry):
         if not self.exclude:
             self.files[entry.path] = entry
             return
 
         match = self.exclude.match(entry.name)
-        if debug:
-            print(f' - exclude {self.exclude} match {match}')
+        _LOG.debug(" - exclude %s, match %s", self.exclude, match)
 
         if not match:
             self.files[entry.path] = entry
@@ -90,8 +92,6 @@ class FileGroups():
 
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
-
-        debug: Be extremely verbose.
     """
 
     def __init__(
@@ -101,17 +101,14 @@ class FileGroups():
             protect: Sequence[re.Pattern] = (),
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
             ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False,
-            remember_configs=True,
-            debug=False):
+            remember_configs=True):
         super().__init__()
-        self.debug = debug
 
         self.config_files = ConfigFiles(
             protect=protect,
             ignore_config_dirs_config_files=ignore_config_dirs_config_files,
             ignore_per_directory_config_files=ignore_per_directory_config_files,
-            remember_configs=remember_configs,
-            debug=debug)
+            remember_configs=remember_configs)
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
         protect_dirs: dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
@@ -123,10 +120,10 @@ class FileGroups():
                 specified_protect_dir = protect_dirs[real_dp]
 
                 if input_work_dir == specified_protect_dir:
-                    print(f"Ignoring 'work' dir '{input_work_dir}' which is also a 'protect' dir.")
+                    _LOG.info("Ignoring 'work' dir '%s' which is also a 'protect' dir.", input_work_dir)
                     continue
 
-                print(f"Ignoring 'work' dir '{real_dp}' (from argument '{input_work_dir}') which is also a 'protect' dir (from argument '{specified_protect_dir}').")
+                _LOG.info("Ignoring 'work' dir '%s' (from argument '%s') which is also a 'protect' dir (from argument '%s').", real_dp, input_work_dir, specified_protect_dir)
                 continue
 
             work_dirs[real_dp] = input_work_dir
@@ -177,17 +174,13 @@ class FileGroups():
         This is called from __init__(), so there would normally be no need to call this explicitly.
         """
 
-        def trace(*args, **kwargs):
-            if self.debug:
-                print(*args, **kwargs)
-
         checked_dirs: set[str] = set()
 
         def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: dict):
             """Find all files belonging to 'group'"""
-            trace(f'find {group.typ.name}:', abs_dir_path)
+            _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
             if abs_dir_path in checked_dirs:
-                trace('directory already checked')
+                _LOG.debug("directory already checked")
                 return
 
             group.num_directories += 1
@@ -196,7 +189,7 @@ class FileGroups():
             for entry in os.scandir(abs_dir_path):
                 if entry.is_dir(follow_symlinks=False):
                     if entry.path in other_group.dirs:
-                        trace(f"find {group.typ.name} - '{entry.path}' is in '{other_group.typ.name}' dir list and not in '{group.typ.name}' dir list")
+                        _LOG.debug("find %s - '%s' is in '%s' dir list and not in '%s' dir list", group.typ.name, entry.path, other_group.typ.name, group.typ.name)
                         find_group(entry.path, other_group, group, dir_config)
                         continue
 
@@ -211,7 +204,7 @@ class FileGroups():
                     # We need to check for match against configured protect patterns, if match, then the file must got to protect group instead
                     pattern = self.config_files.is_protected(entry, dir_config)
                     if pattern:
-                        trace(f"find {group.typ.name} - '{entry.path}' is protected by regex {pattern}, assigning to group {other_group.typ.name} instead.")
+                        _LOG.debug("find %s - '%s' is protected by regex %s, assigning to group %s instead.", group.typ.name, entry.path, pattern, other_group.typ.name)
                         current_group = other_group
 
                 if entry.is_symlink():
@@ -219,7 +212,7 @@ class FileGroups():
                     abs_points_to = os.path.normpath(os.path.join(abs_dir_path, points_to))
 
                     if entry.is_dir(follow_symlinks=True):
-                        trace(f"find {current_group.typ.name} - '{entry.path}' -> '{points_to}' is a symlink to a directory - ignoring")
+                        _LOG.debug("find %s - '%s' -> '%s' is a symlink to a directory - ignoring", current_group.typ.name, entry.path, points_to)
                         current_group.num_directory_symlinks += 1
                         continue
 
@@ -227,8 +220,8 @@ class FileGroups():
                     current_group.symlinks_by_abs_points_to[abs_points_to].append(entry)
                     continue
 
-                trace(f'find {current_group.typ.name} - entry name: {entry.name}')
-                current_group.add_entry_match(entry, debug=self.debug)
+                _LOG.debug("find %s - entry name: %s", current_group.typ.name, entry.name)
+                current_group.add_entry_match(entry)
 
             checked_dirs.add(abs_dir_path)
 
@@ -249,49 +242,59 @@ class FileGroups():
                 find_group(any_dir, self.may_work_on, self.must_protect, parent_conf)
 
     def dump(self):
-        """Print collected files. This may be A LOT of output for large directories."""
+        """Log collected files. This may be A LOT of output for large directories."""
 
-        print()
+        log = _LOG.getChild("dump")
+        lvl = logging.DEBUG
+        if not log.isEnabledFor(lvl):
+            return
 
-        print('must protect:')
+        log.log(lvl, "")
+
+        log.log(lvl, "must protect:")
         for path in self.must_protect.files:
-            print(path)
-        print()
+            log.log(lvl, "%s", path)
+        log.log(lvl, "")
 
-        print('must protect symlinks:')
+        log.log(lvl, "must protect symlinks:")
         for path in self.must_protect.symlinks:
-            print(path, '->', os.readlink(path))
-        print()
+            log.log(lvl, "%s -> %s", path, os.readlink(path))
+        log.log(lvl, "")
 
-        print('must protect symlinks by absolute points to:')
+        log.log(lvl, "must protect symlinks by absolute points to:")
         for abs_points_to, lnks in self.must_protect.symlinks_by_abs_points_to.items():
-            print(lnks, '->', abs_points_to)
-        print()
+            log.log(lvl, "%s -> %s", lnks, abs_points_to)
+        log.log(lvl, "")
 
-        print('may work on:')
+        log.log(lvl, "may work on:")
         for path in self.may_work_on.files:
-            print(path)
-        print()
+            log.log(lvl, "%s", path)
+        log.log(lvl, "")
 
-        print('may work on symlinks:')
+        log.log(lvl, "may work on symlinks:")
         for path in self.may_work_on.symlinks:
-            print(path, '->', os.readlink(path))
-        print()
+            log.log(lvl, "%s -> %s", path, os.readlink(path))
+        log.log(lvl, "")
 
-        print('may work on symlinks by absolute points to:')
+        log.log(lvl, "may work on symlinks by absolute points to:")
         for abs_points_to, lnks in self.may_work_on.symlinks_by_abs_points_to.items():
-            print(lnks, '->', abs_points_to)
-        print()
+            log.log(lvl, "%s -> %s", lnks, abs_points_to)
+        log.log(lvl, "")
 
-        print()
+        log.log(lvl, "")
 
     def stats(self):
-        print('collected protect_directories:', self.must_protect.num_directories)
-        print('collected protect_directory_symlinks:', self.must_protect.num_directory_symlinks)
-        print('collected work_on_directories:', self.may_work_on.num_directories)
-        print('collected work_on_directory_symlinks:', self.may_work_on.num_directory_symlinks)
+        log = _LOG.getChild("stats")
+        lvl = logging.INFO
+        if not log.isEnabledFor(lvl):
+            return
 
-        print('collected must_protect_files:', len(self.must_protect.files))
-        print('collected must_protect_symlinks:', len(self.must_protect.symlinks))
-        print('collected may_work_on_files:', len(self.may_work_on.files))
-        print('collected may_work_on_symlinks:', len(self.may_work_on.symlinks))
+        log.log(lvl, "collected protect_directories: %s", self.must_protect.num_directories)
+        log.log(lvl, "collected protect_directory_symlinks: %s", self.must_protect.num_directory_symlinks)
+        log.log(lvl, "collected work_on_directories: %s", self.may_work_on.num_directories)
+        log.log(lvl, "collected work_on_directory_symlinks: %s", self.may_work_on.num_directory_symlinks)
+
+        log.log(lvl, "collected must_protect_files: %s", len(self.must_protect.files))
+        log.log(lvl, "collected must_protect_symlinks: %s", len(self.must_protect.symlinks))
+        log.log(lvl, "collected may_work_on_files: %s", len(self.may_work_on.files))
+        log.log(lvl, "collected may_work_on_symlinks: %s", len(self.may_work_on.symlinks))

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import logging
 
 import pytest
 
@@ -10,33 +11,33 @@ from .utils.file_handler_test_utils import FP
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_rename_no_symlinks(duplicates_dir, capsys):
+def test_rename_no_symlinks(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_move_no_symlinks(duplicates_dir, capsys):
+def test_move_no_symlinks(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_delete_no_symlinks_with_corresponding(duplicates_dir, capsys):
+def test_delete_no_symlinks_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_delete_no_symlinks_without_corresponding(duplicates_dir, capsys):
+def test_delete_no_symlinks_without_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), None, capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
 
@@ -45,18 +46,18 @@ def test_delete_no_symlinks_without_corresponding(duplicates_dir, capsys):
 
 
 @same_content_files('Hi', 'ki/ttt', 'df/z', 'df/y')
-def test_rename_existing_to_path_in_work_on(duplicates_dir, capsys):
+def test_rename_existing_to_path_in_work_on(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True, is_overwrite=True)
     assert ck.check_rename(dry=False)
     pytest.xfail("TODO: overwrite check for overwriting 'work_on' file?")
 
 
 @same_content_files('Hi', 'ki/z', 'df/y')
-def test_move_existing_to_path_in_protect(duplicates_dir, capsys):
+def test_move_existing_to_path_in_protect(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', log_debug)
 
     with pytest.raises(AssertionError) as exinfo:
         ck.check_move(dry=True)
@@ -68,10 +69,10 @@ def test_move_existing_to_path_in_protect(duplicates_dir, capsys):
 
 
 @same_content_files('Hi', 'outside/a', 'ki/z', 'df/y')
-def test_move_existing_to_path_outside_file_sets(duplicates_dir, capsys):
+def test_move_existing_to_path_outside_file_sets(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
 
-    ck = FP(fh, str(Path('df/y').absolute()), 'outside/a', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'outside/a', log_debug)
     assert ck.check_move(dry=True, is_overwrite=True)
     assert ck.check_move(dry=False)
     pytest.xfail("TODO: overwrite check for run overwriting file outside groups?")
@@ -82,9 +83,9 @@ def test_move_existing_to_path_outside_file_sets(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym')])
-def test_rename_symlinked_once(duplicates_dir, capsys):
+def test_rename_symlinked_once(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('df/f11sym') == "z"
@@ -92,9 +93,9 @@ def test_rename_symlinked_once(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym')])
-def test_move_symlinked_once(duplicates_dir, capsys):
+def test_move_symlinked_once(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/z"
@@ -102,9 +103,9 @@ def test_move_symlinked_once(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym')])
-def test_delete_symlinked_once_with_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_once_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/f11"
@@ -113,9 +114,9 @@ def test_delete_symlinked_once_with_corresponding(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym')])
-def test_delete_symlinked_once_without_corresponding(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+def test_delete_symlinked_once_without_corresponding(duplicates_dir, log_debug):
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert count_files({'df': 0})
@@ -126,9 +127,9 @@ def test_delete_symlinked_once_without_corresponding(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11', 'df/f11sym2')])
-def test_rename_symlinked_mutiple_direct(duplicates_dir, capsys):
+def test_rename_symlinked_mutiple_direct(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('df/f11sym') == "z"
@@ -137,9 +138,9 @@ def test_rename_symlinked_mutiple_direct(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11', 'df/f11sym2')])
-def test_move_symlinked_mutiple_direct(duplicates_dir, capsys):
+def test_move_symlinked_mutiple_direct(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/z"
@@ -148,9 +149,9 @@ def test_move_symlinked_mutiple_direct(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11', 'df/f11sym2')])
-def test_delete_symlinked_mutiple_direct_with_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_direct_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/f11"
@@ -160,9 +161,9 @@ def test_delete_symlinked_mutiple_direct_with_corresponding(duplicates_dir, caps
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11', 'df/f11sym2')])
-def test_delete_symlinked_mutiple_direct_without_corresponding(duplicates_dir, capsys):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+def test_delete_symlinked_mutiple_direct_without_corresponding(duplicates_dir, log_debug):
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert count_files({'df': 0})
@@ -173,9 +174,9 @@ def test_delete_symlinked_mutiple_direct_without_corresponding(duplicates_dir, c
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11sym', 'df/f11sym2'), ('../df/f11sym', 'ki/f11sym3')])
-def test_rename_symlinked_mutiple_indirect(duplicates_dir, capsys):
+def test_rename_symlinked_mutiple_indirect(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('df/f11sym') == "z"
@@ -185,9 +186,9 @@ def test_rename_symlinked_mutiple_indirect(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11sym', 'df/f11sym2'), ('../df/f11sym', 'ki/f11sym3')])
-def test_move_symlinked_mutiple_indirect(duplicates_dir, capsys):
+def test_move_symlinked_mutiple_indirect(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/z"
@@ -197,9 +198,9 @@ def test_move_symlinked_mutiple_indirect(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11sym', 'df/f11sym2'), ('../df/f11sym', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_with_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('df/f11sym') == f"{duplicates_dir}/ki/f11"
@@ -210,11 +211,11 @@ def test_delete_symlinked_mutiple_indirect_with_corresponding(duplicates_dir, ca
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym'), ('f11sym', 'df/f11sym2'), ('../df/f11sym', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_without_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_without_corresponding(duplicates_dir, log_debug):
     # TODO should we delete, leave the file or fail when deleting it will leave broken links in protect dir?
     # Option to also delete link from protect dir?
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('ki/f11sym3') == "../df/f11sym"
@@ -228,9 +229,9 @@ def test_delete_symlinked_mutiple_indirect_without_corresponding(duplicates_dir,
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../df/f11sym2', 'ki/f11sym3')])
-def test_rename_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, capsys):
+def test_rename_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('ki/f11sym') == f"{duplicates_dir}/df/z"
@@ -240,9 +241,9 @@ def test_rename_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../df/f11sym2', 'ki/f11sym3')])
-def test_move_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, capsys):
+def test_move_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
     assert os.readlink('ki/f11sym') == "z"
@@ -252,9 +253,9 @@ def test_move_symlinked_mutiple_indirect_first_in_ki(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../df/f11sym2', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_first_in_ki_with_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_first_in_ki_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('ki/f11sym') == "f11"
@@ -265,11 +266,11 @@ def test_delete_symlinked_mutiple_indirect_first_in_ki_with_corresponding(duplic
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../df/f11sym2', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_first_in_ki_without_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_first_in_ki_without_corresponding(duplicates_dir, log_debug):
     # TODO should we delete, leave the file or fail when deleting it will leave broken links in protect dir?
     # Option to also delete link from protect dir?
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('ki/f11sym3') == "../df/f11sym2"
@@ -281,11 +282,11 @@ def test_delete_symlinked_mutiple_indirect_first_in_ki_without_corresponding(dup
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('f11sym', 'ki/f11sym2')])
-def test_delete_symlinked_mutiple_indirect_first_protect_without_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_first_protect_without_corresponding(duplicates_dir, log_debug):
     # TODO should we delete, leave the file or fail when deleting it will leave broken links in protect dir?
     # Option to also delete link from protect dir?
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert not os.path.exists('ki/f11sym2')  # The link is there but broken
@@ -300,9 +301,9 @@ def test_delete_symlinked_mutiple_indirect_first_protect_without_corresponding(d
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3')])
-def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(duplicates_dir, capsys):
+def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('ki/f11sym') == f"{duplicates_dir}/df/z"
@@ -312,9 +313,9 @@ def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(dupl
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3')])
-def test_move_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(duplicates_dir, capsys):
+def test_move_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
     assert os.readlink('ki/f11sym') == "z"
@@ -324,9 +325,9 @@ def test_move_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside(duplic
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_with_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'ki/f11', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('ki/f11sym') == "f11"
@@ -337,11 +338,11 @@ def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_with
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3')])
-def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_without_corresponding(duplicates_dir, capsys):
+def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_without_corresponding(duplicates_dir, log_debug):
     # TODO should we delete, leave the file or fail when deleting it will leave broken links in protect dir?
     # Option to also delete link from protect dir?
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], debug=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), None, capsys)
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)
     assert os.readlink('ki/f11sym3') == "../outside/a.txt"
@@ -356,9 +357,9 @@ def test_delete_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_with
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3'), ('f11', 'df/f11sym')])
-def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_delete_symlinks(duplicates_dir, capsys):
+def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_delete_symlinks(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], delete_symlinks_instead_of_relinking=True)
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
     assert os.readlink('ki/f11sym') == f"{duplicates_dir}/df/z"
@@ -373,7 +374,7 @@ def test_rename_symlinked_mutiple_indirect_first_in_ki_one_pointing_outside_dele
 
 @same_content_files('Hi', 'outside/a.txt', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../outside/a.txt', 'ki/f11sym3'), ('f11', 'df/f11sym')])
-def test_replace_a_symlink_with_the_file_it_points_to(duplicates_dir, capsys):
+def test_replace_a_symlink_with_the_file_it_points_to(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[], delete_symlinks_instead_of_relinking=True)
     abs_f11_sym = str(Path('df/f11sym').absolute())
     abs_f11 = str(Path('df/f11').absolute())
@@ -403,22 +404,38 @@ def test_replace_a_symlink_with_the_file_it_points_to(duplicates_dir, capsys):
 
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11kisym'), ('../df/f11', 'ki/f11sym'), ('../ki/f11sym', 'df/f11sym2'), ('../df/f11sym2', 'ki/f11sym3')])
-def test_stats(duplicates_dir, capsys):
+def test_stats(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
 
     assert ck.check_rename(dry=True)
     with fh.stats():
         print('did nothing')
 
-    out, _ = capsys.readouterr()
+    out = log_debug.text
     assert 'DRY' in out
+
+    log_debug.clear()
 
     assert ck.check_rename(dry=False)
     with fh.stats():
         print('did stuff')
 
-    out, _ = capsys.readouterr()
+    out = log_debug.text
     assert 'DRY' not in out
 
     pytest.xfail('TODO: validate stats output')
+
+
+@same_content_files('Hi', 'ki/f11', 'df/f11')
+def test_no_info_log_stats(duplicates_dir, caplog):
+    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
+    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', caplog)
+
+    caplog.set_level(logging.WARNING)
+    with fh.stats():
+        pass
+
+    out = caplog.text
+    assert "DRY" not in out
+    assert "deleted: " not in out

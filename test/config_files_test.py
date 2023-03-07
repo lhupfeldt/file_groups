@@ -95,19 +95,24 @@ _EXP_USER_CONFIG_DIR_CFG_NO_GLOBAL_PROTECT = {
 
 
 @pytest.mark.parametrize("remember_configs", [False, True])
-def test_config_files_sys_config_file_no_global(set_conf_dirs, remember_configs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, debug=False)
+def test_config_files_sys_config_file_no_global(set_conf_dirs, remember_configs, log_debug):
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
 
     pprint.pprint(cfgf.global_config)
     assert cfgf.global_config == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
 
     site_config_dir, _ = set_conf_dirs
     assert check_remembered_site_user_conf(cfgf, site_config_dir, None)
+    assert "Merged global config:" in log_debug.text
+    exp = {'file_groups': {'protect': {'local': {re.compile('P1.*\\.jpg'),
+                                                 re.compile('P2.*\\.jpg')},
+                                       'recursive': {re.compile('PR1.*\\.jpg')}}}}
+    assert pprint.pformat(exp) in log_debug.text
 
 
 @pytest.mark.parametrize("remember_configs", [False, True])
 def test_config_files_user_config_file_no_global(set_conf_dirs, remember_configs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
 
     pprint.pprint(cfgf.global_config)
     assert cfgf.global_config == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
@@ -118,7 +123,7 @@ def test_config_files_user_config_file_no_global(set_conf_dirs, remember_configs
 
 @pytest.mark.parametrize("remember_configs", [False, True])
 def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_configs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, debug=True)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
 
     pprint.pprint(cfgf.global_config)
     assert cfgf.global_config == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
@@ -130,7 +135,7 @@ def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_co
 @pytest.mark.parametrize("remember_configs", [False, True])
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd/.file_groups.conf')
 def test_config_files_sys_user_and_and_other_dir_config_files_no_global_no_other_recursive(duplicates_dir, set_conf_dirs, remember_configs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
 
     ddd = f"{duplicates_dir}/ddd"
     ddd_cfg, ddd_file = cfgf.dir_config(Path(ddd), cfgf.global_config)
@@ -212,12 +217,20 @@ def check_inherit_other(cfgf, dupe_dir):
     return True
 
 
+{'file_groups': {'protect': {'local': {re.compile('yyy.*yyy'), re.compile('xxx.*xxx')}, 'recursive': {re.compile('zzz')}}}}
+
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd1/.file_groups.conf')
 @dir_conf_files([r'xxx.*xxx'], [r'zzz2.*'], 'ddd1/ddd2/.file_groups.conf')
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
-def test_config_files_other_dir_config_files_inherit_recursive(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+def test_config_files_other_dir_config_files_inherit_recursive(duplicates_dir, log_debug):
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
     assert check_inherit_other(cfgf, duplicates_dir)
+
+    assert "Merged directory config:" in log_debug.text
+    exp = {'file_groups': {'protect': {'local': {re.compile('yyy.*yyy'),
+                                                 re.compile('xxx.*xxx')},
+                                       'recursive': {re.compile('zzz')}}}}
+    assert pprint.pformat(exp) in log_debug.text
 
 
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd1/.file_groups.conf')
@@ -225,7 +238,7 @@ def test_config_files_other_dir_config_files_inherit_recursive(duplicates_dir):
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_ignore_global_recursive(duplicates_dir, set_conf_dirs):
     """We have config dir config files, but we ignore them."""
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=True, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=True, ignore_per_directory_config_files=False)
     assert check_inherit_other(cfgf, duplicates_dir)
 
 
@@ -310,7 +323,7 @@ def check_inherit_global(cfgf, dupe_dir, conf_dirs):
 
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_global_recursive_no_other(duplicates_dir, set_conf_dirs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
     assert check_inherit_global(cfgf, duplicates_dir, set_conf_dirs)
 
 
@@ -319,7 +332,7 @@ def test_config_files_inherit_global_recursive_no_other(duplicates_dir, set_conf
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_global_recursive_ignore_other(duplicates_dir, set_conf_dirs):
     """We have per directory config files, but we ignore them."""
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=True, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=True)
     assert check_inherit_global(cfgf, duplicates_dir, set_conf_dirs)
 
 
@@ -327,7 +340,7 @@ def test_config_files_inherit_global_recursive_ignore_other(duplicates_dir, set_
 @dir_conf_files([r'xxx.*xxx'], [r'zzz2.*'], 'ddd1/ddd2/.file_groups.conf')
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     ddd1 = f"{duplicates_dir}/ddd1"
     ddd2 = f"{ddd1}/ddd2"
@@ -403,7 +416,7 @@ def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
 
 def test_config_files_two_in_same_config_dir(set_conf_dirs):
     with pytest.raises(Exception) as exinfo:
-        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     _, user_config_dir = set_conf_dirs
     assert f"More than one config file in dir '{user_config_dir}': ['.file_groups.conf', 'file_groups.conf']" in str(exinfo.value)
@@ -411,7 +424,7 @@ def test_config_files_two_in_same_config_dir(set_conf_dirs):
 
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd/.file_groups.conf', 'ddd/file_groups.conf')
 def test_config_files_two_in_same_other_dir(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
@@ -422,7 +435,7 @@ def test_config_files_two_in_same_other_dir(duplicates_dir):
 
 @same_content_files(repr({"filegroups": {}}), 'ddd/file_groups.conf')
 def test_config_files_missing_file_groups_key(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
@@ -433,7 +446,7 @@ def test_config_files_missing_file_groups_key(duplicates_dir):
 
 @same_content_files(repr({"file_groups": {"potect": {}}}), 'ddd/file_groups.conf')
 def test_config_files_missing_protect_key(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
@@ -444,7 +457,7 @@ def test_config_files_missing_protect_key(duplicates_dir):
 
 def test_config_files_unknown_protect_sub_key_config_dir(set_conf_dirs):
     with pytest.raises(Exception) as exinfo:
-        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     sys_config_dir, _ = set_conf_dirs
     exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{sys_config_dir}/file_groups.conf' are: ('local', 'recursive', 'global'). "
@@ -454,7 +467,7 @@ def test_config_files_unknown_protect_sub_key_config_dir(set_conf_dirs):
 
 @same_content_files(repr({"file_groups": {"protect": {"hola": r"X"}}}), 'ddd/file_groups.conf')
 def test_config_files_unknown_protect_sub_key_other_dir(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
@@ -467,7 +480,7 @@ def test_config_files_unknown_protect_sub_key_other_dir(duplicates_dir):
 
 @same_content_files(repr({"file_groups": {"protect": {"local": r"X", "global": r"X"}}}), 'ddd/.file_groups.conf')
 def test_config_files_invalid_protect_global_key_other_dir(duplicates_dir):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, debug=False)
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"

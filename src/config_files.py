@@ -6,11 +6,15 @@ import re
 from pathlib import Path
 import itertools
 from pprint import pformat
+import logging
 from typing import Mapping, Tuple, Sequence, cast
 
 from appdirs import AppDirs # type: ignore
 
 from .types import FsPath
+
+
+_LOG = logging.getLogger(__name__)
 
 
 class ConfigException(Exception):
@@ -72,7 +76,6 @@ class ConfigFiles():
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
         remember_configs: Store loaded and merged configs in `dir_configs` member variable.
-        debug: Be extremely verbose.
 
     Members:
        global_config: dict
@@ -88,10 +91,9 @@ class ConfigFiles():
 
     def __init__(
             self, protect: Sequence[re.Pattern] = (),
-            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, debug=False):
+            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False):
         super().__init__()
         self.remember_configs = remember_configs
-        self.debug = debug
 
         self.per_dir_configs: dict[str, dict] = {}  # key is abs_dir_path, value is config dict
         self.global_config = {
@@ -108,7 +110,7 @@ class ConfigFiles():
         if not ignore_config_dirs_config_files:
             app_dirs = AppDirs("file_groups", "Hupfeldt_IT")
             config_dirs = app_dirs.site_config_dir.split(':') + [app_dirs.user_config_dir]
-            self.trace("config_dirs:", config_dirs)
+            _LOG.debug("config_dirs: %s", config_dirs)
             gfpt = self.global_config["file_groups"]["protect"]
             for conf_dir in config_dirs:
                 conf_dir = Path(conf_dir)
@@ -121,7 +123,7 @@ class ConfigFiles():
 
                 fpt = new_config["file_groups"]["protect"]
                 cast(set, gfpt["recursive"]).update(fpt.get("global", ()))
-                self.trace(f"Merged global config:\n{pformat(new_config)}")
+                _LOG.debug("Merged global config:\n %s", pformat(new_config))
 
                 try:
                     del fpt['global']
@@ -130,14 +132,9 @@ class ConfigFiles():
 
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
-    def trace(self, *args, **kwargs):
-        """call `print` if debug is true"""
-        if self.debug:
-            print(*args, **kwargs)
-
     def _get_single_conf_file(self, conf_dir: Path, ignore_config_files: bool) -> Tuple[dict|None, Path|None]:
         """Return the config file content and path if any config file is found in conf_dir. Error if two are found."""
-        self.trace(f"Checking for config file in directory: {conf_dir}")
+        _LOG.debug("Checking for config file in directory: %s", conf_dir)
 
         num_files = 0
         for cfn in self._conf_file_names:
@@ -148,21 +145,21 @@ class ConfigFiles():
 
         if num_files == 1:
             if ignore_config_files:
-                self.trace(f"Ignoring config file: {conf_file}")
+                _LOG.debug("Ignoring config file: %s", conf_file)
                 return None, None
 
-            self.trace(f"Read config file: {conf_file}")
+            _LOG.debug("Read config file: %s", conf_file)
             with open(conf_file, encoding="utf-8") as fh:
                 new_config = ast.literal_eval(fh.read())
-            self.trace(pformat(new_config))
+            _LOG.debug("%s", pformat(new_config))
             return new_config, conf_file
 
         if num_files == 0:
-            self.trace(f"No config file in directory {conf_dir}")
+            _LOG.debug("No config file in directory %s", conf_dir)
             return None, None
 
         msg = f"More than one config file in dir '{conf_dir}': {self._conf_file_names}."
-        self.trace(msg)
+        _LOG.debug("%s", msg)
         raise ConfigException(msg)
 
     def _read_and_validate_config_file(
@@ -198,7 +195,7 @@ class ConfigFiles():
         for key, val in protect_conf.items():
             if key not in valid_protect_scopes:
                 msg = f"The only keys allowed in '{self._fg_key}[{self._protect_key}]' section in the config file '{conf_file}' are: {valid_protect_scopes}. Got: '{key}'."
-                self.trace(msg)
+                _LOG.debug("%s", msg)
                 raise ConfigException(msg)
 
             protect_conf[key] = set(re.compile(pattern) for pattern in val)
@@ -208,7 +205,10 @@ class ConfigFiles():
         for key in self._valid_dir_protect_scopes:  # Do NOT use the 'valid_protect_scopes' argument here
             protect_conf.setdefault(key, set())
 
-        self.trace(f"Merged directory config:\n{pformat(new_config)}")
+        lvl = logging.DEBUG
+        if _LOG.isEnabledFor(lvl):
+            _LOG.log(lvl, "Merged directory config:\n%s", pformat(new_config))
+
         return new_config, conf_file
 
     def dir_config(self, conf_dir: Path, parent_conf: dict) -> Tuple[dict, Path|None]:

@@ -133,7 +133,7 @@ def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs(duplicates_
 @symlink_files([('f12', 'ki/f12sym'), ('f11', 'df/f11sym')])
 def test_file_groups_unrelated_dirs_symlinks(duplicates_dir):
     """Unrelated work_on and protect dirs both with symlinks"""
-    with FGC(FileGroups(["ki"], ["df"], debug=True), duplicates_dir) as ck:
+    with FGC(FileGroups(["ki"], ["df"]), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/f12', 'ki/f22', 'ki/f32')
         assert ck.ckfl('must_protect.symlinks', 'ki/f12sym')
         assert ck.cksfl('must_protect.symlinks_by_abs_points_to', {'ki/f12': ['ki/f12sym']})
@@ -222,7 +222,7 @@ def test_file_groups_symlinks_from_protect_to_work_on_dirs_symlinks(duplicates_d
 @hardlink_files([('df/f41', 'df/f41hard')])
 def test_file_groups_unrelated_dirs_hardlinks_within_work_on(duplicates_dir):
     """Unrelated work_on and protect dirs - hardlink to otherwise not duplicated file in work_on-from-dir"""
-    with FGC(FileGroups(["ki"], ["df"], debug=True), duplicates_dir) as ck:
+    with FGC(FileGroups(["ki"], ["df"]), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/f12', 'ki/f22', 'ki/f32')
         assert ck.ckfl('may_work_on.files', 'df/f11', 'df/f21', 'df/f31', 'df/f41', 'df/f41hard')
 
@@ -234,7 +234,7 @@ def test_file_groups_unrelated_dirs_hardlinks_within_work_on(duplicates_dir):
 @same_content_files("More cow bells", 'ki1/df/f31', 'df2/f32')
 @different_content_files("base", 'ki1/df/f41', 'ki1/df/ki12/f41', 'ki1/df/ki13/ki14/fffff4.txt', 'ki1/f41', 'df2/f41')
 @different_content_files("base", 'ki1/df/f512', 'ki1/df/ki12/f512', 'ki1/df/ki13/ki14/fffff52.txt', 'ki1/f512', 'df2/f512')
-def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_with_pattern_and_debug(duplicates_dir, capsys):
+def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_with_pattern_and_debug(duplicates_dir, log_debug):
     """Multiple protect dirs
 
     Protect:
@@ -256,9 +256,9 @@ def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_with_patter
     kargs = ["ki1", "ki1/df/ki12", "ki1/df/ki13", "ki1/df/ki13/ki14"]
     dargs = ["df2", "ki1/df", "ki1/df/ki13/df12"]
 
-    # Exclude from protext filenames where the 'stem' ends with 4 or 1
+    # Exclude from protected filenames where the 'stem' ends with 4 or 1
     # Include in work_on filenames where the 'stem' ends with 1
-    with FGC(FileGroups(kargs, dargs, protect_exclude=re.compile(r'.*[41](\..*)?$'), work_include=re.compile(r'.*1(\..*)?$'), debug=True), duplicates_dir) as ck:
+    with FGC(FileGroups(kargs, dargs, protect_exclude=re.compile(r'.*[41](\..*)?$'), work_include=re.compile(r'.*1(\..*)?$')), duplicates_dir) as ck:
         assert ck.ckfl(
             'must_protect.files',
             'ki1/df/ki12/f12', 'ki1/df/ki12/f22',
@@ -272,7 +272,7 @@ def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_with_patter
             'ki1/df/ki13/df12/f11', 'ki1/df/ki13/df12/f21')
 
     ck.fg.stats()
-    out, _ = capsys.readouterr()
+    out = log_debug.text
     assert 'collected protect_directories:' in out
     assert 'collected protect_directory_symlinks:' in out
     assert 'collected work_on_directories:' in out
@@ -300,26 +300,22 @@ def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_with_patter
 
 @same_content_files("Hi", 'xx/f11', 'xx/f12')
 @different_content_files("base", 'xx/f31', 'xx/f32')
-def test_file_groups_specified_protect_dir_same_as_work_on_dir(duplicates_dir, capsys):
+def test_file_groups_specified_protect_dir_same_as_work_on_dir(duplicates_dir, log_debug):
     """protect dir same as work_on dir -> work_on-dir is ignored."""
     fg = FileGroups(["xx"], ["xx"])
 
-    sout, _ = capsys.readouterr()
-    assert "Ignoring 'work' dir 'xx' which is also a 'protect' dir." in sout
-
+    assert "Ignoring 'work' dir 'xx' which is also a 'protect' dir." in log_debug.text
     assert ckfl("must_protect.files", fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32')
 
 
 @same_content_files("Hi", 'xx/f11', 'xx/f12')
 @different_content_files("base", 'xx/f31', 'xx/f32')
 @different_content_files("bip", 'xx/yy/f41')
-def test_file_groups_resolved_protect_dir_same_as_work_on_dir(duplicates_dir, capsys):
+def test_file_groups_resolved_protect_dir_same_as_work_on_dir(duplicates_dir, log_debug):
     """protect dir same as work_on dir -> work_on-dir is ignored."""
     fg = FileGroups(["xx"], ["xx/yy/../../xx"])
 
-    sout, _ = capsys.readouterr()
-    assert f"Ignoring 'work' dir '{duplicates_dir}/xx' (from argument 'xx/yy/../../xx') which is also a 'protect' dir (from argument 'xx')" in sout
-
+    assert f"Ignoring 'work' dir '{duplicates_dir}/xx' (from argument 'xx/yy/../../xx') which is also a 'protect' dir (from argument 'xx')" in log_debug.text
     assert ckfl("must_protect.files", fg.must_protect.files, 'xx/f11', 'xx/f12', 'xx/f31', 'xx/f32', 'xx/yy/f41')
 
 
@@ -368,11 +364,11 @@ def test_dir_args_df_protect_is_not_a_dir_does_not_exist(duplicates_dir):
 @symlink_files([('f12', 'ki/f12sym'), ('f11', 'df/f11sym'), ('f11', 'df/f11sym2')])
 @different_content_files("base", 'df/f31', 'ki/f32')
 @symlink_files([('f31', 'df/f31sym'),])
-def test_file_groups_dump(duplicates_dir, capsys):
+def test_file_groups_dump(duplicates_dir, log_debug):
     fg = FileGroups(["ki"], ["df"])
     fg.dump()
 
-    out, _ = capsys.readouterr()
+    out = log_debug.text
     assert 'must protect:' in out
     assert 'must protect symlinks:' in out
     assert 'must protect symlinks by absolute points to:' in out
@@ -380,3 +376,12 @@ def test_file_groups_dump(duplicates_dir, capsys):
     assert 'may work on symlinks:' in out
     assert 'may work on symlinks by absolute points to:' in out
     pytest.xfail('TODO: verify output files')
+
+
+@same_content_files("Hi", 'df/f11', 'ki/f12')
+def test_file_groups_no_debug_log_dump(duplicates_dir, caplog):
+    fg = FileGroups(["ki"], ["df"])
+    fg.dump()
+
+    out = caplog.text
+    assert 'must protect:' not in out

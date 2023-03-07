@@ -5,9 +5,13 @@ from pathlib import Path
 import shutil
 import re
 from contextlib import contextmanager
+import logging
 from typing import Sequence
 
 from .file_groups import FileGroups
+
+
+_LOG = logging.getLogger(__name__)
 
 
 class FileHandler(FileGroups):
@@ -18,13 +22,12 @@ class FileHandler(FileGroups):
     Re-link symlinks when a file being deleted has a corresponding file.
 
     Arguments:
-        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include, debug: See `FileGroups` class.
+        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include: See `FileGroups` class.
         dry_run: Don't actually do anything.
         protected_regexes: Protect files matching this from being deleted or moved.
         delete_symlinks_instead_of_relinking: Normal operation is to re-link to a 'corresponding' or renamed file when renaming or deleting a file.
            If delete_symlinks_instead_of_relinking is true, then symlinks in work_on dirs pointing to renamed/deletes files will be deleted even if
            they could have logically been made to point to a file in a protect dir.
-        debug: Be very verbose.
     """
 
     def __init__(
@@ -34,13 +37,11 @@ class FileHandler(FileGroups):
             dry_run: bool,
             protected_regexes: Sequence[re.Pattern],
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
-            delete_symlinks_instead_of_relinking=False,
-            debug=False):
+            delete_symlinks_instead_of_relinking=False):
         super().__init__(
             protect=protected_regexes,
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
-            protect_exclude=protect_exclude, work_include=work_include,
-            debug=debug)
+            protect_exclude=protect_exclude, work_include=work_include)
 
         self.dry_run = dry_run
         self.delete_symlinks_instead_of_relinking = delete_symlinks_instead_of_relinking
@@ -70,10 +71,6 @@ class FileHandler(FileGroups):
         self.num_moved = 0
         self.num_relinked = 0
 
-    def trace(self, *args, **kwargs):
-        if self.debug:
-            print(*args, **kwargs)
-
     def _no_symlink_check_registered_delete(self, delete_path: str):
         """Does a registered delete without checking for symlinks, so that we can use this in the symlink handling."""
         assert isinstance(delete_path, str)
@@ -81,7 +78,7 @@ class FileHandler(FileGroups):
         assert delete_path not in self.must_protect.files, f"Oops, trying to delete protected file '{delete_path}'."
         assert delete_path not in self.must_protect.symlinks, f"Oops, trying to delete protected symlink '{delete_path}'."
 
-        print("    deleting:", delete_path)
+        _LOG.info("    deleting: %s", delete_path)
         if not self.dry_run:
             os.unlink(delete_path)
         self.num_deleted += 1
@@ -95,7 +92,7 @@ class FileHandler(FileGroups):
         assert os.path.isabs(symlnk_path), f"Expected an absolute path, got '{symlnk_path}'"
 
         if symlnk_path in self.deleted_symlinks:
-            self.trace(f"{symlnk_path} previously deleted.")
+            _LOG.debug("%s previously deleted.", symlnk_path)
             return
 
         points_to = os.readlink(symlnk_path)
@@ -103,17 +100,17 @@ class FileHandler(FileGroups):
 
         # Check whether symlink points outside our work files
         if abs_points_to not in self.may_work_on.files and abs_points_to not in self.may_work_on.symlinks:
-            print(f"Keeping symlink pointing outside delete-dirs: '{symlnk_path}' -> '{points_to}' ({abs_points_to})")
+            _LOG.info("Keeping symlink pointing outside delete-dirs: '%s' -> '%s' (%s)", symlnk_path, points_to, abs_points_to)
             return
 
-        print(f"Symlinked: '{symlnk_path}' -> '{points_to}' ({abs_points_to})")
+        _LOG.info("Symlinked: '%s' -> '%s' (%s)", symlnk_path, points_to, abs_points_to)
 
         if self.delete_symlinks_instead_of_relinking or not keep_path:
             # Find symlinks to the symlink which we will delete, and delete those as well
             symlnk_to_symlinks = self.may_work_on.symlinks_by_abs_points_to.get(symlnk_path, [])
             for symlnk_to_symlink in symlnk_to_symlinks:
                 abs_points_to_symlnk = os.path.normpath(os.path.join(os.path.dirname(symlnk_to_symlink), symlnk_to_symlink))
-                print(f"Symlink to symlink: '{symlnk_to_symlink}' ({abs_points_to_symlnk}).")
+                _LOG.info("Symlink to symlink: '%s' (%s).", symlnk_to_symlink, abs_points_to_symlnk)
                 self._handle_single_symlink_chain(abs_points_to_symlnk, keep_path)
 
         if self.delete_symlinks_instead_of_relinking and (symlnk_path in self.may_work_on.files or symlnk_path in self.may_work_on.symlinks):
@@ -125,7 +122,7 @@ class FileHandler(FileGroups):
                 self._no_symlink_check_registered_delete(symlnk_path)
             else:
                 # TODO, verify message
-                print(f"Created broken symlink '{symlnk_path}' -> '{points_to}'")
+                _LOG.info("Created broken symlink '%s' -> '%s'", symlnk_path, points_to)
             return
 
         abs_keep_path = Path(keep_path).absolute()
@@ -139,7 +136,7 @@ class FileHandler(FileGroups):
             except ValueError:
                 keep_path = abs_keep_path
 
-        print(f"Changing symlink: '{symlnk_path}' -> '{keep_path}' (was -> {points_to})")
+        _LOG.info("Changing symlink: '%s' -> '%s' (was -> %s)", symlnk_path, keep_path, points_to)
         if not self.dry_run:
             os.unlink(symlnk_path)
             os.symlink(keep_path, symlnk_path)
@@ -148,14 +145,14 @@ class FileHandler(FileGroups):
 
     def _fix_symlinks_to_deleted_or_moved_files(self, from_path: str, to_path):
         """Any symlinks pointing to 'from_path' will be change to point to 'to_path'"""
-        self.trace(f"_fix_symlinks_to_deleted_or_moved_files(self, {from_path}, {to_path})")
+        _LOG.debug("_fix_symlinks_to_deleted_or_moved_files(self, %s, %s)", from_path, to_path)
 
         for symlnk in self.must_protect.symlinks_by_abs_points_to.get(from_path, ()):
-            self.trace(f"_fix_symlinks_to_deleted_or_moved_files, must protect symlink: '{symlnk}'.")
+            _LOG.debug("_fix_symlinks_to_deleted_or_moved_files, must protect symlink: '%s'.", symlnk)
             self._handle_single_symlink_chain(os.fspath(symlnk), to_path)
 
         for symlnk in self.may_work_on.symlinks_by_abs_points_to.get(from_path, ()):
-            self.trace(f"_fix_symlinks_to_deleted_or_moved_files, may_work_on symlink: '{symlnk}'.")
+            _LOG.debug("_fix_symlinks_to_deleted_or_moved_files, may_work_on symlink: '%s'.", symlnk)
             self._handle_single_symlink_chain(os.fspath(symlnk), to_path)
 
     def registered_delete(self, delete_path: str, corresponding_keep_path):
@@ -175,13 +172,13 @@ class FileHandler(FileGroups):
             self.moved_from[abs_tp] = from_path
 
         if is_move:
-            print("    moving:", from_path, 'to', os.fspath(to_path))
+            _LOG.info("    moving: %s to %s", from_path, os.fspath(to_path))
             if not self.dry_run:
                 shutil.move(from_path, to_path)
 
             self.num_moved += 1
         else:
-            print("    renaming:", from_path, 'to', os.fspath(to_path))
+            _LOG.info("    renaming: %s to %s", from_path, os.fspath(to_path))
             if not self.dry_run:
                 os.rename(from_path, to_path)
 
@@ -197,23 +194,29 @@ class FileHandler(FileGroups):
 
     @contextmanager
     def stats(self):
+        log = _LOG.getChild("stats")
+        lvl = logging.INFO
+        if not log.isEnabledFor(lvl):
+            yield
+            return
+
         prefix = ''
 
-        print()
+        log.log(lvl, "")
         if self.dry_run:
-            print("*** DRY RUN ***")
+            log.log(lvl, "*** DRY RUN ***")
             prefix = 'would have '
 
         super().stats()
-        print()
-        print(f'{prefix}deleted:', self.num_deleted)
-        print(f'{prefix}renamed:', self.num_renamed)
-        print(f'{prefix}moved:', self.num_moved)
-        print(f'{prefix}relinked:', self.num_relinked)
+        log.log(lvl, "")
+        log.log(lvl, "%sdeleted: %s", prefix, self.num_deleted)
+        log.log(lvl, "%srenamed: %s", prefix, self.num_renamed)
+        log.log(lvl, "%smoved: %s", prefix, self.num_moved)
+        log.log(lvl, "%srelinked: %s", prefix, self.num_relinked)
 
         try:
             yield
 
         finally:
             if self.dry_run:
-                print("*** DRY RUN ***")
+                log.log(lvl, "*** DRY RUN ***")

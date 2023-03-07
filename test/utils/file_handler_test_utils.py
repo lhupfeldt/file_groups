@@ -20,7 +20,7 @@ class FP():
     fh: FileHandler
     left: str
     right: str
-    capsys: pytest.fixture
+    capture: pytest.fixture
 
     def check_rename(self, dry, rename_or_move='renaming', is_overwrite=False):
         self.fh.dry_run = dry
@@ -30,7 +30,12 @@ class FP():
         else:
             self.fh.registered_move(self.left, self.right)
 
-        out, _ = self.capsys.readouterr()
+        try:
+            # caplog obj
+            out = self.capture.text
+        except AttributeError:
+            # capsys obj
+            out, _ = self.capture.readouterr()
         print(out)
 
         try:
@@ -62,7 +67,13 @@ class FP():
         self.fh.reset()
         self.fh.registered_delete(self.left, self.right)
 
-        out, _ = self.capsys.readouterr()
+        try:
+            # capsys obj
+            out, _ = self.capture.readouterr()
+        except AttributeError:
+            # caplog obj
+            out = self.capture.text
+            self.capture.clear()
         print(out)
 
         try:

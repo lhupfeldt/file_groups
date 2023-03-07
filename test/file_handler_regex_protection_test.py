@@ -13,10 +13,10 @@ from .utils.file_handler_test_utils import FP
 # Matching patterns
 
 
-def check_protected_source(action, dupe_dir, capsys):
+def check_protected_source(action, dupe_dir, log_debug):
     try:
         fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/y')])
-        ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+        ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
         action_msg = action if action == 'delete' else "move/rename"
 
@@ -38,24 +38,24 @@ def check_protected_source(action, dupe_dir, capsys):
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_rename_protected_source(duplicates_dir, capsys):
-    assert check_protected_source('rename', duplicates_dir, capsys)
+def test_rename_protected_source(duplicates_dir, log_debug):
+    assert check_protected_source('rename', duplicates_dir, log_debug)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_move_protected_source(duplicates_dir, capsys):
-    assert check_protected_source('move', duplicates_dir, capsys)
+def test_move_protected_source(duplicates_dir, log_debug):
+    assert check_protected_source('move', duplicates_dir, log_debug)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_delete_protected_source(duplicates_dir, capsys):
-    assert check_protected_source('delete', duplicates_dir, capsys)
+def test_delete_protected_source(duplicates_dir, log_debug):
+    assert check_protected_source('delete', duplicates_dir, log_debug)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
-def test_rename_protected_target(duplicates_dir, capsys):
+def test_rename_protected_target(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     with pytest.raises(AssertionError) as exinfo:
         ck.check_rename(dry=True)
@@ -73,9 +73,9 @@ def test_rename_protected_target(duplicates_dir, capsys):
 
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
-def test_move_protected_target(duplicates_dir, capsys):
+def test_move_protected_target(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     with pytest.raises(AssertionError) as exinfo:
         ck.check_move(dry=True)
@@ -92,10 +92,10 @@ def test_move_protected_target(duplicates_dir, capsys):
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys):
+def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, log_debug):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
@@ -105,10 +105,10 @@ def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, capsy
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys):
+def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, log_debug):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
@@ -121,24 +121,24 @@ def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, capsys)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_rename_unmatched_protection(duplicates_dir, capsys):
+def test_rename_unmatched_protection(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_move_unmatched_protection(duplicates_dir, capsys):
+def test_move_unmatched_protection(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
-def test_delete_unmatched_protection(duplicates_dir, capsys):
+def test_delete_unmatched_protection(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
-    ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', capsys)
+    ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)

@@ -4,6 +4,7 @@ import pathlib
 import shutil
 import functools
 from pathlib import Path
+import logging
 
 from pytest import fixture
 
@@ -220,3 +221,9 @@ def hardlink_files(links):
         return _test_files_creator_decorator(func, _different_content_files_funcs, _hardlink_files, *[hardlink for (_, hardlink) in links])
 
     return deco
+
+
+@fixture(name="log_debug")
+def _fixture_caplog_debug(caplog):
+    caplog.set_level(logging.DEBUG)
+    return caplog
