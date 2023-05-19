@@ -217,8 +217,6 @@ def check_inherit_other(cfgf, dupe_dir):
     return True
 
 
-{'file_groups': {'protect': {'local': {re.compile('yyy.*yyy'), re.compile('xxx.*xxx')}, 'recursive': {re.compile('zzz')}}}}
-
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd1/.file_groups.conf')
 @dir_conf_files([r'xxx.*xxx'], [r'zzz2.*'], 'ddd1/ddd2/.file_groups.conf')
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
