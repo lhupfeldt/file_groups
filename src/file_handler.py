@@ -155,16 +155,20 @@ class FileHandler(FileGroups):
             _LOG.debug("_fix_symlinks_to_deleted_or_moved_files, may_work_on symlink: '%s'.", symlnk)
             self._handle_single_symlink_chain(os.fspath(symlnk), to_path)
 
-    def registered_delete(self, delete_path: str, corresponding_keep_path):
+    def registered_delete(self, delete_path: str, corresponding_keep_path) -> Path|None:
+        """Return `corresponding_keep_path` as absolute Path"""
         self._no_symlink_check_registered_delete(delete_path)
         self._fix_symlinks_to_deleted_or_moved_files(delete_path, corresponding_keep_path)
+        return Path(corresponding_keep_path).absolute() if corresponding_keep_path else None
 
-    def _registered_move_or_rename(self, from_path: str, to_path, *, is_move):
+    def _registered_move_or_rename(self, from_path: str, to_path, *, is_move) -> Path:
+        """Return `to_path` as absolute Path"""
         assert isinstance(from_path, str)
         assert os.path.isabs(from_path), f"Expected absolute path, got '{from_path}'"
         assert from_path not in self.must_protect.files, f"Oops, trying to move/rename protected file '{from_path}'."
         assert from_path not in self.must_protect.symlinks, f"Oops, trying to move/rename protected symlink '{from_path}'."
-        abs_tp = str(Path(to_path).absolute())
+        res = Path(to_path).absolute()
+        abs_tp = str(res)
         assert abs_tp not in self.must_protect.files, f"Oops, trying to overwrite protected file '{Path(to_path).absolute()}' with '{from_path}'."
         assert abs_tp not in self.must_protect.symlinks, f"Oops, trying to overwrite protected symlink '{to_path}' with '{from_path}'."
 
@@ -185,12 +189,15 @@ class FileHandler(FileGroups):
             self.num_renamed += 1
 
         self._fix_symlinks_to_deleted_or_moved_files(from_path, to_path)
+        return res
 
-    def registered_move(self, from_path: str, to_path):
-        self._registered_move_or_rename(from_path, to_path, is_move=True)
+    def registered_move(self, from_path: str, to_path) -> Path:
+        """Return `to_path` as absolute Path"""
+        return self._registered_move_or_rename(from_path, to_path, is_move=True)
 
-    def registered_rename(self, from_path: str, to_path):
-        self._registered_move_or_rename(from_path, to_path, is_move=False)
+    def registered_rename(self, from_path: str, to_path) -> Path:
+        """Return `to_path` as absolute Path"""
+        return self._registered_move_or_rename(from_path, to_path, is_move=False)
 
     @contextmanager
     def stats(self):

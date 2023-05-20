@@ -22,13 +22,13 @@ class FP():
     right: str
     capture: pytest.fixture
 
-    def check_rename(self, dry, rename_or_move='renaming', is_overwrite=False):
+    def check_rename(self, dry, rename_or_move='renaming', is_overwrite=False) -> Path|bool:
         self.fh.dry_run = dry
         self.fh.reset()
         if rename_or_move == 'renaming':
-            self.fh.registered_rename(self.left, self.right)
+            res = self.fh.registered_rename(self.left, self.right)
         else:
-            self.fh.registered_move(self.left, self.right)
+            res = self.fh.registered_move(self.left, self.right)
 
         try:
             # caplog obj
@@ -52,20 +52,22 @@ class FP():
             else:
                 assert not Path(self.left).exists()
                 assert Path(self.right).exists()
+
+            assert res, f"Expected a Path as result, got: {res}"
         except AssertionError as ex:
             print(ex)
             traceback.print_exception(*sys.exc_info())
             return False
 
-        return True
+        return res
 
     def check_move(self, dry, is_overwrite=False):
         return self.check_rename(dry, rename_or_move='moving', is_overwrite=is_overwrite)
 
-    def check_delete(self, dry):
+    def check_delete(self, dry) -> Path|bool:
         self.fh.dry_run = dry
         self.fh.reset()
-        self.fh.registered_delete(self.left, self.right)
+        res = self.fh.registered_delete(self.left, self.right)
 
         try:
             # capsys obj
@@ -85,6 +87,10 @@ class FP():
             else:
                 assert not Path(self.left).exists()
                 assert self.right is None or Path(self.right).exists()
+
+            if self.right is not None:
+                assert res, f"Expected a Path as result, got: {res}"
+                return res
         except AssertionError as ex:
             print(ex)
             traceback.print_exception(*sys.exc_info())

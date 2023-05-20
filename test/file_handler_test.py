@@ -14,32 +14,35 @@ from .utils.file_handler_test_utils import FP
 def test_rename_no_symlinks(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
-    assert ck.check_rename(dry=True)
-    assert ck.check_rename(dry=False)
+    exp_res = Path('df/z').absolute()
+    assert ck.check_rename(dry=True) == exp_res
+    assert ck.check_rename(dry=False) == exp_res
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_move_no_symlinks(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', log_debug)
-    assert ck.check_move(dry=True)
-    assert ck.check_move(dry=False)
+    exp_res = Path('ki/z').absolute()
+    assert ck.check_move(dry=True) == exp_res
+    assert ck.check_move(dry=False) == exp_res
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_delete_no_symlinks_with_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', log_debug)
-    assert ck.check_delete(dry=True)
-    assert ck.check_delete(dry=False)
+    exp_res = Path('ki/x').absolute()
+    assert ck.check_delete(dry=True) == exp_res
+    assert ck.check_delete(dry=False) == exp_res
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_delete_no_symlinks_without_corresponding(duplicates_dir, log_debug):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
     ck = FP(fh, str(Path('df/y').absolute()), None, log_debug)
-    assert ck.check_delete(dry=True)
-    assert ck.check_delete(dry=False)
+    assert ck.check_delete(dry=True) is True
+    assert ck.check_delete(dry=False) is True
 
 
 # Test existing to_path
