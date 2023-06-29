@@ -12,14 +12,13 @@ nox.options.error_on_missing_interpreters = True
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
-    session.install("-r", str(_HERE/"requirements.txt"), "-r", str(_TEST_DIR/"mypy_requirements.txt"))
+    session.install("-e", ".", "-r", str(_TEST_DIR/"mypy_requirements.txt"))
     session.run("mypy", "-v", str(_HERE/"src"))
 
 
 @nox.session(reuse_venv=True)
 def pylint(session):
-    session.install(".")
-    session.install("-r", str(_HERE/"requirements.txt"), "-r", str(_TEST_DIR/"pylint_requirements.txt"))
+    session.install(".", "-r", str(_TEST_DIR/"pylint_requirements.txt"))
 
     # TODO: enable checks
     disable_checks = "missing-module-docstring,missing-class-docstring,missing-function-docstring"
@@ -30,6 +29,5 @@ def pylint(session):
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def unit(session):
-    session.install(".")
-    session.install("-r", str(_HERE/"requirements.txt"), "-r", str(_TEST_DIR/"requirements.txt"))
+    session.install(".", "-r", str(_TEST_DIR/"requirements.txt"))
     session.run("pytest", "--cov", "--cov-report=term-missing", f"--cov-config={_TEST_DIR}/.coveragerc", *session.posargs)
