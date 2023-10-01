@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier
+_commit: 89097dd
+_src_path: git@github.com:lhupfeldt/copier_python_package_template.git
+author_email: lhn@hupfeldtit.dk
+author_name: Lars Hupfeldt Nielsen
+company_name: Hupfeldt IT
+copyright_holder: Lars Hupfeldt Nielsen, Hupfeldt IT ApS
+creation_year: 2018
+description: Group files into 'protect' and 'work_on' and provide operations for safe
+    delete/move and symlink handling.
+git_repo_url: https://github.com/lhupfeldt/file_groups.git
+github_organization: lhupfeldt
+legal_entity: ApS
+module_name: file_groups
+package_name: file_groups
