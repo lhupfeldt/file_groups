@@ -1,4 +1,4 @@
-# Copyright © 2018 - 2020 Lars Hupfeldt Nielsen, Hupfeldt IT
+# Copyright © 2018 - 2023 Lars Hupfeldt Nielsen, Hupfeldt IT ApS
 
 [build-system]
 requires = ["setuptools >= 68.0.0", "wheel>=0.40.0", "setuptools_scm[toml]>=7.1.0"]

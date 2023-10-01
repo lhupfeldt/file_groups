@@ -1,3 +1,7 @@
+"""nox https://nox.thea.codes/en/stable/ configuration"""
+
+# Use nox >= 2023.4.22
+
 from pathlib import Path
 
 import nox
@@ -5,20 +9,20 @@ import nox
 
 _HERE = Path(__file__).absolute().parent
 _TEST_DIR = _HERE/"test"
-_PY_VERSIONS = ["3.11", "3.10"]
+_PY_VERSIONS = ["3.12", "3.11", "3.10"]
 
 nox.options.error_on_missing_interpreters = True
 
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
-    session.install("-e", ".", "-r", str(_TEST_DIR/"mypy_requirements.txt"))
+    session.install("-e", ".", "mypy>=1.5.1")
     session.run("mypy", "-v", str(_HERE/"src"))
 
 
 @nox.session(reuse_venv=True)
 def pylint(session):
-    session.install(".", "-r", str(_TEST_DIR/"pylint_requirements.txt"))
+    session.install(".", "pylint>=2.16.1", "pylint-pytest>=1.1.2")
 
     # TODO: enable checks
     disable_checks = "missing-module-docstring,missing-class-docstring,missing-function-docstring"
@@ -29,5 +33,5 @@ def pylint(session):
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def unit(session):
-    session.install(".", "-r", str(_TEST_DIR/"requirements.txt"))
+    session.install(".", "pytest>=7.4.1", "coverage>=7.3.1", "pytest-cov>=4.1.0")
     session.run("pytest", "--cov", "--cov-report=term-missing", f"--cov-config={_TEST_DIR}/.coveragerc", *session.posargs)
