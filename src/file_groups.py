@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 from os import DirEntry
 from pathlib import Path
