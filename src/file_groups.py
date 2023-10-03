@@ -18,6 +18,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class GroupType(Enum):
+    """Define the file group types."""
     MUST_PROTECT = 0
     MAY_WORK_ON = 1
 
@@ -284,6 +285,7 @@ class FileGroups():
         log.log(lvl, "")
 
     def stats(self):
+        """Log collection numbers."""
         log = _LOG.getChild("stats")
         lvl = logging.INFO
         if not log.isEnabledFor(lvl):
