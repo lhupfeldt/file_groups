@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from file_groups.file_handler import FileHandler
+from file_groups.handler import FileHandler
 
 from .conftest import same_content_files
 from .utils.file_handler_test_utils import FP

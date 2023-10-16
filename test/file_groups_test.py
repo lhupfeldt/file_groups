@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from file_groups.file_groups import FileGroups
+from file_groups.groups import FileGroups
 
 from .conftest import same_content_files, different_content_files, symlink_files, hardlink_files
 from .utils.file_group_test_utils import FGC, ckfl

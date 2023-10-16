@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from file_groups.file_handler import FileHandler
+from file_groups.handler import FileHandler
 
 from .conftest import same_content_files, symlink_files, count_files
 from .utils.file_handler_test_utils import FP

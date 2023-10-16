@@ -3,7 +3,7 @@ from timeit import timeit
 
 from guppy import hpy
 
-from file_groups.file_groups import FileGroups
+from file_groups.groups import FileGroups
 
 
 _HOME_DIR = Path.home()

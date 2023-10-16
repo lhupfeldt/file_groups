@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import logging
 from typing import Sequence
 
-from .file_groups import FileGroups
+from .groups import FileGroups
 
 
 _LOG = logging.getLogger(__name__)

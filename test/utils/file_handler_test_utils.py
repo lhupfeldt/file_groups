@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from file_groups.file_handler import FileHandler
+from file_groups.handler import FileHandler
 
 
 @dataclass

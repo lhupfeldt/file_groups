@@ -6,7 +6,7 @@ from typing import Sequence
 
 from .compare_files import CompareFiles
 from .types import FsPath
-from .file_handler import FileHandler
+from .handler import FileHandler
 
 
 _LOG = logging.getLogger(__name__)

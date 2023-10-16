@@ -1,7 +1,7 @@
 import os
 from typing import Mapping
 
-from file_groups.file_groups import FileGroups
+from file_groups.groups import FileGroups
 
 
 def ckfl(attr_name, ll, *exp_names):
