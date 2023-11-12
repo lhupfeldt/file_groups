@@ -6,8 +6,8 @@ import pytest
 
 from file_groups.handler import FileHandler
 
-from .conftest import same_content_files
-from .utils.file_handler_test_utils import FP
+from ..conftest import same_content_files
+from .utils import FP
 
 
 # Matching patterns

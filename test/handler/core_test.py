@@ -6,8 +6,8 @@ import pytest
 
 from file_groups.handler import FileHandler
 
-from .conftest import same_content_files, symlink_files, count_files
-from .utils.file_handler_test_utils import FP
+from ..conftest import same_content_files, symlink_files, count_files
+from .utils import FP
 
 
 @same_content_files('Hi', 'ki/x', 'df/y')
@@ -433,7 +433,7 @@ def test_stats(duplicates_dir, log_debug):
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 def test_no_info_log_stats(duplicates_dir, caplog):
     fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[])
-    ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', caplog)
+    FP(fh, str(Path('df/f11').absolute()), 'df/z', caplog)
 
     caplog.set_level(logging.WARNING)
     with fh.stats():

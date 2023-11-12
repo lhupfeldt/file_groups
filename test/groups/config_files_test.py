@@ -3,9 +3,9 @@ import pprint
 
 from file_groups.groups import FileGroups
 
-from .conftest import same_content_files
-from .utils.file_group_test_utils import FGC
-from .config_files_test import set_conf_dirs
+from ..conftest import same_content_files
+from ..config_files_test import set_conf_dirs
+from .utils import FGC
 
 
 @same_content_files("Hejsa", 'ki/Af11.jpg', 'df/Bf11.jpg')

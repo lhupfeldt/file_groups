@@ -2,8 +2,8 @@ import pytest
 
 from file_groups.groups import FileGroups
 
-from .conftest import same_content_files, symlink_files
-from .utils.file_group_test_utils import FGC
+from ..conftest import same_content_files, symlink_files
+from .utils import FGC
 
 
 @same_content_files("Hi", 'df/f11', 'ki/f12')

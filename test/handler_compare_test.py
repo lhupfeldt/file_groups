@@ -4,7 +4,7 @@ from file_groups.compare_files import CompareFiles
 from file_groups.handler_compare import FileHandlerCompare
 
 from .conftest import same_content_files, different_content_files
-from .utils.file_handler_test_utils import FP
+from .handler.utils import FP
 
 
 # TODO: output

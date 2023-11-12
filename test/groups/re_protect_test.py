@@ -2,9 +2,9 @@ import re
 
 from file_groups.groups import FileGroups
 
-from .conftest import same_content_files
-from .utils.file_group_test_utils import FGC
-from .config_files_test import set_conf_dirs, dir_conf_files
+from ..conftest import same_content_files
+from ..config_files_test import set_conf_dirs, dir_conf_files
+from .utils import FGC
 
 
 @same_content_files('A', 'ki/Af11.jpg', 'df/Bf11.jpg', 'ki/df/Af11.jpg', 'ki/ki/ki/ki/Af11.jpg')

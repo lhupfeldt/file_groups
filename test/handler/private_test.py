@@ -7,7 +7,7 @@ import pytest
 
 from file_groups.handler import FileHandler
 
-from .conftest import same_content_files
+from ..conftest import same_content_files
 
 
 # pylint: disable=protected-access
