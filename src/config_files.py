@@ -106,29 +106,31 @@ class ConfigFiles():
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
 
         if not ignore_config_dirs_config_files:
-            app_dirs = AppDirs("file_groups", "Hupfeldt_IT")
-            config_dirs = app_dirs.site_config_dir.split(':') + [app_dirs.user_config_dir]
-            _LOG.debug("config_dirs: %s", config_dirs)
-            gfpt = self.global_config["file_groups"]["protect"]
-            for conf_dir in config_dirs:
-                conf_dir = Path(conf_dir)
-                if not conf_dir.exists():
-                    continue
+            self._load_config_dir_files(AppDirs("file_groups", "Hupfeldt_IT"))
 
-                new_config, _ = self._read_and_validate_config_file(conf_dir, self.global_config, self._valid_config_dir_protect_scopes, False)
-                if self.remember_configs:
-                    self.per_dir_configs[str(conf_dir)] = new_config
+    def _load_config_dir_files(self, app_dirs):
+        config_dirs = app_dirs.site_config_dir.split(':') + [app_dirs.user_config_dir]
+        _LOG.debug("config_dirs: %s", config_dirs)
+        gfpt = self.global_config["file_groups"]["protect"]
+        for conf_dir in config_dirs:
+            conf_dir = Path(conf_dir)
+            if not conf_dir.exists():
+                continue
 
-                fpt = new_config["file_groups"]["protect"]
-                cast(set, gfpt["recursive"]).update(fpt.get("global", ()))
-                _LOG.debug("Merged global config:\n %s", pformat(new_config))
+            new_config, _ = self._read_and_validate_config_file(conf_dir, self.global_config, self._valid_config_dir_protect_scopes, False)
+            if self.remember_configs:
+                self.per_dir_configs[str(conf_dir)] = new_config
 
-                try:
-                    del fpt['global']
-                except KeyError:
-                    pass
+            fpt = new_config["file_groups"]["protect"]
+            cast(set, gfpt["recursive"]).update(fpt.get("global", ()))
+            _LOG.debug("Merged global config:\n %s", pformat(new_config))
 
-        # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
+            try:
+                del fpt['global']
+            except KeyError:
+                pass
+
+    # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     def _get_single_conf_file(self, conf_dir: Path, ignore_config_files: bool) -> Tuple[dict|None, Path|None]:
         """Return the config file content and path if any config file is found in conf_dir. Error if two are found."""
