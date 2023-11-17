@@ -122,8 +122,9 @@ def test_config_files_user_config_file_no_global(set_conf_dirs, remember_configs
 
 
 @pytest.mark.parametrize("remember_configs", [False, True])
-def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_configs):
-    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
+@pytest.mark.parametrize("app_dirs", [None, AppDirs("ttt", "Hurra")])
+def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_configs, app_dirs):
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, app_dirs=app_dirs)
 
     pprint.pprint(cfgf.global_config)
     assert cfgf.global_config == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT

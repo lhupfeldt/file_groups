@@ -74,6 +74,8 @@ class ConfigFiles():
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
         remember_configs: Store loaded and merged configs in `dir_configs` member variable.
+        app_dirs: AppDirs("file_groups", "Hupfeldt_IT"), Provide your own instance to change congig file names and path.
+            See: https://pypi.org/project/appdirs/
 
     Members:
        global_config: dict
@@ -89,7 +91,8 @@ class ConfigFiles():
 
     def __init__(
             self, protect: Sequence[re.Pattern] = (),
-            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False):
+            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False,
+            app_dirs=None):
         super().__init__()
         self.remember_configs = remember_configs
 
@@ -106,7 +109,7 @@ class ConfigFiles():
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
 
         if not ignore_config_dirs_config_files:
-            self._load_config_dir_files(AppDirs("file_groups", "Hupfeldt_IT"))
+            self._load_config_dir_files(app_dirs or AppDirs("file_groups", "Hupfeldt_IT"))
 
     def _load_config_dir_files(self, app_dirs):
         config_dirs = app_dirs.site_config_dir.split(':') + [app_dirs.user_config_dir]
