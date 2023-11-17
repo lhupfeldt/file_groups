@@ -35,14 +35,14 @@ class _Group():
     num_directories: int = 0
     num_directory_symlinks: int = 0
 
-    def add_entry_match(self, entry):
+    def add_entry_match(self, entry: DirEntry):
         """Abstract, but abstract and dataclass does not work with mypy. https://github.com/python/mypy/issues/500"""
 
 @dataclass
 class _IncludeMatchGroup(_Group):
     include: re.Pattern|None = None
 
-    def add_entry_match(self, entry):
+    def add_entry_match(self, entry: DirEntry):
         if not self.include:
             self.files[entry.path] = entry
             return
@@ -58,7 +58,7 @@ class _IncludeMatchGroup(_Group):
 class _ExcludeMatchGroup(_Group):
     exclude: re.Pattern|None = None
 
-    def add_entry_match(self, entry):
+    def add_entry_match(self, entry: DirEntry):
         if not self.exclude:
             self.files[entry.path] = entry
             return
