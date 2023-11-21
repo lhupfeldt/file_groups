@@ -83,7 +83,8 @@ class ConfigFiles():
        dir_configs: dict[str: dict] Mapping from dir name to directory specific config dict. Only if remember_configs is True.
     """
 
-    _conf_file_names = [".file_groups.conf", "file_groups.conf"]
+    conf_file_names = [".file_groups.conf", "file_groups.conf"]
+
     _fg_key = "file_groups"
     _protect_key = "protect"
     _valid_dir_protect_scopes = ("local", "recursive")
@@ -140,7 +141,7 @@ class ConfigFiles():
         _LOG.debug("Checking for config file in directory: %s", conf_dir)
 
         num_files = 0
-        for cfn in self._conf_file_names:
+        for cfn in self.conf_file_names:
             tmp_conf_file = conf_dir/cfn
             if tmp_conf_file.exists():
                 conf_file = tmp_conf_file
@@ -161,7 +162,7 @@ class ConfigFiles():
             _LOG.debug("No config file in directory %s", conf_dir)
             return None, None
 
-        msg = f"More than one config file in dir '{conf_dir}': {self._conf_file_names}."
+        msg = f"More than one config file in dir '{conf_dir}': {self.conf_file_names}."
         _LOG.debug("%s", msg)
         raise ConfigException(msg)
 
