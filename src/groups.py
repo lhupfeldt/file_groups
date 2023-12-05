@@ -9,7 +9,7 @@ from enum import Enum
 import logging
 from typing import Sequence
 
-from .config_files import ConfigFiles
+from .config_files import DirConfig, ConfigFiles
 
 
 _LOG = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ class FileGroups():
 
         checked_dirs: set[str] = set()
 
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: dict):
+        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig|None):
             """Find all files belonging to 'group'"""
             _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
             if abs_dir_path in checked_dirs:
@@ -183,7 +183,7 @@ class FileGroups():
                 return
 
             group.num_directories += 1
-            dir_config, config_file = self.config_files.dir_config(Path(abs_dir_path), parent_conf)
+            dir_config = self.config_files.dir_config(Path(abs_dir_path), parent_conf)
 
             for entry in os.scandir(abs_dir_path):
                 if entry.is_dir(follow_symlinks=False):
@@ -195,13 +195,13 @@ class FileGroups():
                     find_group(entry.path, group, other_group, dir_config)
                     continue
 
-                if config_file and entry.name == config_file.name:
+                if entry.name in dir_config.config_files:
                     continue
 
                 current_group = group
                 if group.typ is GroupType.MAY_WORK_ON:
                     # We need to check for match against configured protect patterns, if match, then the file must got to protect group instead
-                    pattern = self.config_files.is_protected(entry, dir_config)
+                    pattern = dir_config.is_protected(entry)
                     if pattern:
                         _LOG.debug("find %s - '%s' is protected by regex %s, assigning to group %s instead.", group.typ.name, entry.path, pattern, other_group.typ.name)
                         current_group = other_group
@@ -233,7 +233,7 @@ class FileGroups():
 
                 parent_dir = parent_dir.parent
             else:
-                parent_conf = self.config_files.global_config
+                parent_conf = None
 
             if any_dir in self.must_protect.dirs:
                 find_group(any_dir, self.must_protect, self.may_work_on, parent_conf)
