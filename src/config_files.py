@@ -132,7 +132,7 @@ class ConfigFiles():
 
     def __init__(
             self, protect: Sequence[re.Pattern] = (),
-            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False,
+            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=True,
             app_dirs: Sequence[AppDirs]|None = None):
         super().__init__()
 
@@ -148,15 +148,14 @@ class ConfigFiles():
         app_dirs = app_dirs or (ConfigFiles.default_appdirs,)
         self.conf_file_names = tuple((apd.appname + ".conf", "." + apd.appname + ".conf") for apd in app_dirs)
         _LOG.debug("Conf file names: %s", self.conf_file_names)
+        self.config_dirs = []
         if not ignore_config_dirs_config_files:
-            config_dirs = []
             for appd in app_dirs:
-                config_dirs.extend(appd.site_config_dir.split(':'))
+                self.config_dirs.extend(appd.site_config_dir.split(':'))
             for appd in app_dirs:
-                config_dirs.append(appd.user_config_dir)
-            self._load_config_dir_files(config_dirs)
+                self.config_dirs.append(appd.user_config_dir)
 
-    # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
+        # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     def _read_and_validate_config_file_for_one_appname(  # pylint: disable=too-many-locals
             self, conf_dir: Path, conf_file_name_pair: Sequence[str], parent_conf: DirConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
@@ -234,9 +233,10 @@ class ConfigFiles():
 
         return DirConfig(cfg_merge, conf_dir, cfg_files)
 
-    def _load_config_dir_files(self, config_dirs):
-        _LOG.debug("config_dirs: %s", config_dirs)
-        for conf_dir in config_dirs:
+    def load_config_dir_files(self) -> None:
+        """Load config files from platform standard directories."""
+        _LOG.debug("config_dirs: %s", self.config_dirs)
+        for conf_dir in self.config_dirs:
             conf_dir = Path(conf_dir)
             if not conf_dir.exists():
                 continue

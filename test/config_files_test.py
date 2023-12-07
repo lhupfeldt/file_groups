@@ -104,6 +104,7 @@ def dir_conf_files(protect_local, protect_recursive, *conf_files):
 @pytest.mark.parametrize("remember_configs", [False, True])
 def test_config_files_sys_config_file_no_global(set_conf_dirs, remember_configs, log_debug):
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
+    cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config", cfgf._global_config)
     assert cfgf._global_config.protect == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
@@ -120,6 +121,7 @@ def test_config_files_sys_config_file_no_global(set_conf_dirs, remember_configs,
 @pytest.mark.parametrize("remember_configs", [False, True])
 def test_config_files_user_config_file_no_global(set_conf_dirs, remember_configs):
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
+    cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
     assert cfgf._global_config.protect == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
@@ -133,6 +135,7 @@ def test_config_files_user_config_file_no_global(set_conf_dirs, remember_configs
 def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_configs, app_dirs, log_debug):
     """No ttt config exists"""
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs, app_dirs=app_dirs)
+    cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
     assert cfgf._global_config.protect == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT
@@ -145,6 +148,7 @@ def test_config_files_sys_user_config_files_no_global(set_conf_dirs, remember_co
 def test_config_files_sys_user_config_files_additional_appdirs(set_conf_dirs, log_debug):
     app_dirs = (ConfigFiles.default_appdirs, AppDirs("an_app", "This is an application using the awesome file_groups!"))
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, app_dirs=app_dirs)
+    cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
     assert cfgf._global_config == DirConfig({
@@ -156,6 +160,7 @@ def test_config_files_sys_user_config_files_additional_appdirs(set_conf_dirs, lo
 def test_config_files_sys_user_config_files_replaced_appdirs(set_conf_dirs, log_debug):
     app_dirs = (AppDirs("an_app", "Yeah!"),)
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=False, app_dirs=app_dirs)
+    cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
     assert cfgf._global_config == DirConfig({
@@ -168,6 +173,7 @@ def test_config_files_sys_user_config_files_replaced_appdirs(set_conf_dirs, log_
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd/.file_groups.conf')
 def test_config_files_sys_user_and_and_other_dir_config_files_no_global_no_other_recursive(duplicates_dir, set_conf_dirs, remember_configs):
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=remember_configs)
+    cfgf.load_config_dir_files()
 
     ddd = f"{duplicates_dir}/ddd"
     ddd_cfg = cfgf.dir_config(Path(ddd), cfgf._global_config)
@@ -321,6 +327,7 @@ def check_inherit_global(cfgf, dupe_dir, conf_dirs):
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_global_recursive_no_other(duplicates_dir, set_conf_dirs):
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+    cfgf.load_config_dir_files()
     assert check_inherit_global(cfgf, duplicates_dir, set_conf_dirs)
 
 
@@ -330,6 +337,7 @@ def test_config_files_inherit_global_recursive_no_other(duplicates_dir, set_conf
 def test_config_files_inherit_global_recursive_ignore_other(duplicates_dir, set_conf_dirs):
     """We have per directory config files, but we ignore them."""
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=True)
+    cfgf.load_config_dir_files()
     assert check_inherit_global(cfgf, duplicates_dir, set_conf_dirs)
 
 
@@ -338,6 +346,7 @@ def test_config_files_inherit_global_recursive_ignore_other(duplicates_dir, set_
 @same_content_files('Hi', 'ddd1/ddd2/ddd3/hi.txt')
 def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
     cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+    cfgf.load_config_dir_files()
 
     ddd1 = f"{duplicates_dir}/ddd1"
     ddd2 = f"{ddd1}/ddd2"
@@ -397,7 +406,8 @@ def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
 
 def test_config_files_two_in_same_config_dir(set_conf_dirs):
     with pytest.raises(Exception) as exinfo:
-        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+        cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+        cfgf.load_config_dir_files()
 
     _, user_config_dir = set_conf_dirs
     assert f"More than one config file in dir '{user_config_dir}': ['file_groups.conf', '.file_groups.conf']" in str(exinfo.value)
@@ -438,7 +448,8 @@ def test_config_files_missing_protect_key(duplicates_dir):
 
 def test_config_files_unknown_protect_sub_key_config_dir(set_conf_dirs):
     with pytest.raises(Exception) as exinfo:
-        ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+        cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
+        cfgf.load_config_dir_files()
 
     sys_config_dir, _ = set_conf_dirs
     exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{sys_config_dir}/file_groups.conf' are: ('local', 'recursive', 'global'). "

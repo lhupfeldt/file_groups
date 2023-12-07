@@ -2,6 +2,7 @@ import re
 import pprint
 
 from file_groups.groups import FileGroups
+from file_groups.config_files import ConfigFiles
 
 from ..conftest import same_content_files
 from ..config_files_test import set_conf_dirs
@@ -10,12 +11,12 @@ from .utils import FGC
 
 @same_content_files("Hejsa", 'ki/Af11.jpg', 'df/Bf11.jpg')
 def test_file_groups_sys_user_config_files_no_global(duplicates_dir, set_conf_dirs):
-    with FGC(FileGroups(['ki'], ['df'], remember_configs=True), duplicates_dir) as ck:
+    with FGC(FileGroups(['ki'], ['df'], config_files=ConfigFiles(remember_configs=True)), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/Af11.jpg')
         assert ck.ckfl('may_work_on.files', 'df/Bf11.jpg')
 
-    pprint.pprint(ck.fg.config_files._global_config)
-    assert ck.fg.config_files._global_config.protect == {
+    pprint.pprint(ck.fg.config_files._global_config)  # pylint: disable=protected-access
+    assert ck.fg.config_files._global_config.protect == {  # pylint: disable=protected-access
         'local': set(),
         'recursive': set()
     }

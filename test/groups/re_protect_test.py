@@ -1,6 +1,7 @@
 import re
 
 from file_groups.groups import FileGroups
+from file_groups.config_files import ConfigFiles
 
 from ..conftest import same_content_files
 from ..config_files_test import set_conf_dirs, dir_conf_files
@@ -21,7 +22,7 @@ def test_file_groups_group_files_by_config_protect(duplicates_dir, set_conf_dirs
        'ki/df/KEEP_ME.jpg' should be protected.
     """
 
-    with FGC(FileGroups(['ki'], ['df', 'ki/df'], protect=[re.compile(r'(?i)imatchopt\..*$')]), duplicates_dir) as ck:
+    with FGC(FileGroups(['ki'], ['df', 'ki/df'], config_files=ConfigFiles(protect=[re.compile(r'(?i)imatchopt\..*$')])), duplicates_dir) as ck:
         assert ck.ckfl(
             'must_protect.files',
             'df/df/AND_ME.JPG', 'df/df/KEEP_ME.jpg', 'df/df/df/And_Me.jpg', 'df/df/df/and_me.jpeg',

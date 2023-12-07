@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from file_groups.handler import FileHandler
+from file_groups.config_files import ConfigFiles
 
 from ..conftest import same_content_files
 from .utils import FP
@@ -15,7 +16,7 @@ from .utils import FP
 
 def check_protected_source(action, dupe_dir, log_debug):
     try:
-        fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/y')])
+        fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/y')]))
         ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
         action_msg = action if action == 'delete' else "move/rename"
@@ -54,7 +55,7 @@ def test_delete_protected_source(duplicates_dir, log_debug):
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
 def test_rename_protected_target(duplicates_dir, log_debug):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/z')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     with pytest.raises(AssertionError) as exinfo:
@@ -74,7 +75,7 @@ def test_rename_protected_target(duplicates_dir, log_debug):
 
 @same_content_files('Hi', 'ki/x', 'df/y', 'df/z')
 def test_move_protected_target(duplicates_dir, log_debug):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/z')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     with pytest.raises(AssertionError) as exinfo:
@@ -94,7 +95,7 @@ def test_move_protected_target(duplicates_dir, log_debug):
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, log_debug):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/z')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     assert ck.check_rename(dry=True)
@@ -107,7 +108,7 @@ def test_rename_protected_target_pattern_bu_no_target_file(duplicates_dir, log_d
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, log_debug):
     """It is allowed to move to a target file matching a protect regex if the file does not exist."""
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/z')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/z')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
 
     assert ck.check_move(dry=True)
@@ -122,7 +123,7 @@ def test_move_protected_target_pattern_bu_no_target_file(duplicates_dir, log_deb
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_rename_unmatched_protection(duplicates_dir, log_debug):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/NO')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'df/z', log_debug)
     assert ck.check_rename(dry=True)
     assert ck.check_rename(dry=False)
@@ -130,7 +131,7 @@ def test_rename_unmatched_protection(duplicates_dir, log_debug):
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_move_unmatched_protection(duplicates_dir, log_debug):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/NO')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/z', log_debug)
     assert ck.check_move(dry=True)
     assert ck.check_move(dry=False)
@@ -138,7 +139,7 @@ def test_move_unmatched_protection(duplicates_dir, log_debug):
 
 @same_content_files('Hi', 'ki/x', 'df/y')
 def test_delete_unmatched_protection(duplicates_dir, log_debug):
-    fh = FileHandler(['ki'], ['df'], dry_run=True, protected_regexes=[re.compile('.*/NO')])
+    fh = FileHandler(['ki'], ['df'], dry_run=True, config_files=ConfigFiles(protect=[re.compile('.*/NO')]))
     ck = FP(fh, str(Path('df/y').absolute()), 'ki/x', log_debug)
     assert ck.check_delete(dry=True)
     assert ck.check_delete(dry=False)

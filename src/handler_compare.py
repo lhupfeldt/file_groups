@@ -7,6 +7,7 @@ from typing import Sequence
 from .compare_files import CompareFiles
 from .types import FsPath
 from .handler import FileHandler
+from .config_files import ConfigFiles
 
 
 _LOG = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ class FileHandlerCompare(FileHandler):
     """Extend `FileHandler` with a compare method
 
     Arguments:
-        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include: See `FileGroups` class.
+        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include, config_files: See `FileGroups` class.
         dry_run, protected_regexes, delete_symlinks_instead_of_relinking: See `FileHandler` class.
         fcmp: Object providing compare function.
     """
@@ -25,17 +26,15 @@ class FileHandlerCompare(FileHandler):
             self,
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path], fcmp: CompareFiles,
             *,
-            dry_run: bool,
-            protected_regexes: Sequence[re.Pattern],
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
+            config_files: ConfigFiles|None = None,
+            dry_run: bool,
             delete_symlinks_instead_of_relinking=False):
         super().__init__(
-            protect_dirs_seq=protect_dirs_seq,
-            work_dirs_seq=work_dirs_seq,
+            protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
+            protect_exclude=protect_exclude, work_include=work_include,
+            config_files=config_files,
             dry_run=dry_run,
-            protected_regexes=protected_regexes,
-            protect_exclude=protect_exclude,
-            work_include=work_include,
             delete_symlinks_instead_of_relinking=delete_symlinks_instead_of_relinking)
 
         self._fcmp = fcmp
