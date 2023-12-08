@@ -402,6 +402,21 @@ def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
         assert cfgf.per_dir_configs[ddd3] == cfg3
 
 
+def test_config_files_specified(request, log_debug):
+    func_name, _, _ = request.node.name.partition('[')
+    config_file = _HERE/'in/configs'/func_name.replace('test_', '')/"direct.conf"
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, config_file=config_file)
+    cfgf.load_config_dir_files()
+
+    assert "Merged directory config:" in log_debug.text
+
+    _pp("cfgf._global_config:", cfgf._global_config)
+    assert cfgf._global_config == DirConfig({
+        "local": set(),
+        "recursive": set([re.compile(r"gusr1.*\.jpg")]),
+    }, None, ())  # TODO: should we have dir(s) and files in global DirConfig?
+
+
 # ---------- Errors ----------
 
 def test_config_files_two_in_same_config_dir(set_conf_dirs):
@@ -481,3 +496,13 @@ def test_config_files_invalid_protect_global_key_other_dir(duplicates_dir):
     exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{duplicates_dir}/ddd/.file_groups.conf' are: ('local', 'recursive'). "
     exp += "Got: 'global'."
     assert exp in str(exinfo.value)
+
+
+def test_config_files_not_existing_specified():
+    config_file = Path("xxx.conf")
+    cfgf = ConfigFiles(ignore_config_dirs_config_files=True, ignore_per_directory_config_files=True, config_file=config_file)
+
+    with pytest.raises(FileNotFoundError) as exinfo:
+        cfgf.load_config_dir_files()
+
+    assert str(config_file) in str(exinfo.value)

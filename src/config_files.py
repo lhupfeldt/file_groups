@@ -1,12 +1,13 @@
 import ast
 import os
+import errno
 import re
 from pathlib import Path
 import itertools
 from pprint import pformat
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Sequence
+from typing import Tuple, Sequence, cast
 
 from appdirs import AppDirs # type: ignore
 
@@ -133,7 +134,10 @@ class ConfigFiles():
     def __init__(
             self, protect: Sequence[re.Pattern] = (),
             ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=True,
-            app_dirs: Sequence[AppDirs]|None = None):
+            app_dirs: Sequence[AppDirs]|None = None,
+            *,
+            config_file: Path|None = None,
+        ):
         super().__init__()
 
         self._global_config = DirConfig({
@@ -154,6 +158,8 @@ class ConfigFiles():
                 self.config_dirs.extend(appd.site_config_dir.split(':'))
             for appd in app_dirs:
                 self.config_dirs.append(appd.user_config_dir)
+
+        self.config_file = config_file
 
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
@@ -234,14 +240,9 @@ class ConfigFiles():
         return DirConfig(cfg_merge, conf_dir, cfg_files)
 
     def load_config_dir_files(self) -> None:
-        """Load config files from platform standard directories."""
-        _LOG.debug("config_dirs: %s", self.config_dirs)
-        for conf_dir in self.config_dirs:
-            conf_dir = Path(conf_dir)
-            if not conf_dir.exists():
-                continue
+        """Load config files from platform standard directories and specified config file, if any."""
 
-            new_config = self._read_and_validate_config_files(conf_dir, self._global_config, self._valid_config_dir_protect_scopes, False)
+        def merge_one_config_to_global(conf_dir, new_config):
             if self.remember_configs:
                 self.per_dir_configs[str(conf_dir)] = new_config
 
@@ -252,6 +253,25 @@ class ConfigFiles():
                 del new_config.protect['global']
             except KeyError:
                 pass
+
+        _LOG.debug("config_dirs: %s", self.config_dirs)
+        for conf_dir in self.config_dirs:
+            conf_dir = Path(conf_dir)
+            if not conf_dir.exists():
+                continue
+
+            new_config = self._read_and_validate_config_files(conf_dir, self._global_config, self._valid_config_dir_protect_scopes, False)
+            merge_one_config_to_global(conf_dir, new_config)
+
+        if self.config_file:
+            conf_dir = self.config_file.parent.absolute()
+            conf_name = self.config_file.name
+            cfg, filename = self._read_and_validate_config_file_for_one_appname(
+                conf_dir, (conf_name,), self._global_config, self._valid_config_dir_protect_scopes, ignore_config_files=False)
+            if not filename:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.config_file))
+
+            merge_one_config_to_global(conf_dir, DirConfig(cfg, conf_dir, (cast(str, filename),)))
 
     def dir_config(self, conf_dir: Path, parent_conf: DirConfig|None) -> DirConfig:
         """Read and merge config file from directory 'conf_dir' with 'parent_conf'.
