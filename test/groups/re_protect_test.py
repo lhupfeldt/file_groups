@@ -31,3 +31,18 @@ def test_file_groups_group_files_by_config_protect(duplicates_dir, set_conf_dirs
         assert ck.ckfl(
             'may_work_on.files', 'df/AND_ME.JPG', 'df/Bf11.jpg', 'df/P1.jpg', 'df/P1a.jpg', 'df/PR1.jpg', 'df/df/df/df/KEEP_ME.jpg', 'df/df/df/df/gusr1.mpg',
             'ki/df/Af11.jpg', 'ki/df/NOT_ME.jpeg', 'ki/df/P2.jpg', 'ki/df/P3.jpg')
+
+
+@same_content_files('B', 'df/df/KEEP_ME/a.jpg', 'df/df/df/a.jpg', 'df/df/df/df/KEEP_ME_a/a.jpg')
+@dir_conf_files([], [r'KEEP_ME.*'], 'df/df/.file_groups.conf')
+def test_file_groups_group_dirs_by_config_file_protect(duplicates_dir, set_conf_dirs):
+    with FGC(FileGroups([], ['df']), duplicates_dir) as ck:
+        assert ck.ckfl('must_protect.files', 'df/df/KEEP_ME/a.jpg', 'df/df/df/df/KEEP_ME_a/a.jpg')
+        assert ck.ckfl('may_work_on.files', 'df/df/df/a.jpg')
+
+
+@same_content_files('B', 'df/df/KEEP_ME/a.jpg', 'df/df/df/a.jpg', 'df/df/df/df/KEEP_ME/a.jpg')
+def test_file_groups_group_dirs_with_path(duplicates_dir, log_debug):
+    with FGC(FileGroups([], ['df'], config_files=ConfigFiles(protect=[re.compile(r'^df/df/KEEP_ME$')])), duplicates_dir) as ck:
+        assert ck.ckfl('must_protect.files', 'df/df/KEEP_ME/a.jpg')
+        assert ck.ckfl('may_work_on.files', 'df/df/df/a.jpg', 'df/df/df/df/KEEP_ME/a.jpg')

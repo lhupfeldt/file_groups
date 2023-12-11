@@ -99,6 +99,20 @@ def dir_conf_files(protect_local, protect_recursive, *conf_files):
     return same_content_files(repr(conf), *conf_files)
 
 
+def app_dirs_conf_files(protect_local, protect_recursive, protect_global, *conf_files):
+    conf = {
+        "file_groups": {
+            "protect": {
+                "local": protect_local,
+                "recursive": protect_recursive,
+                "global": protect_global,
+            }
+        }
+    }
+
+    return same_content_files(repr(conf), *conf_files)
+
+
 # pylint: disable=protected-access
 
 @pytest.mark.parametrize("remember_configs", [False, True])

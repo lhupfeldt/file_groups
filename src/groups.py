@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from itertools import chain
 from enum import Enum
 import logging
-from typing import Sequence
+from typing import Sequence, cast
 
 from .config_files import DirConfig, ConfigFiles
 
@@ -169,8 +169,46 @@ class FileGroups():
 
         checked_dirs: set[str] = set()
 
+        def handle_entry(abs_dir_path: str, group: _Group, other_group: _Group, dir_config: DirConfig, entry: DirEntry):
+            """Put entry in  the correct group. Call 'find_group' if entry is a directory."""
+            if group.typ is GroupType.MAY_WORK_ON:
+                # Check for match against configured protect patterns, if match, then the file must got to protect group instead
+                pattern = dir_config.is_protected(entry)
+                if pattern:
+                    _LOG.debug("find %s - '%s' is protected by regex %s, assigning to group %s instead.", group.typ.name, entry.path, pattern, other_group.typ.name)
+                    group, other_group = other_group, group
+
+            if entry.is_dir(follow_symlinks=False):
+                if entry.path in other_group.dirs:
+                    _LOG.debug("find %s - '%s' is in '%s' dir list and not in '%s' dir list", group.typ.name, entry.path, other_group.typ.name, group.typ.name)
+                    find_group(entry.path, other_group, group, dir_config)
+                    return
+
+                find_group(entry.path, group, other_group, dir_config)
+                return
+
+            if entry.name in dir_config.config_files:
+                return
+
+            if entry.is_symlink():
+                # cast: https://github.com/python/mypy/issues/11964
+                points_to = os.readlink(cast(str, entry))
+                abs_points_to = os.path.normpath(os.path.join(abs_dir_path, points_to))
+
+                if entry.is_dir(follow_symlinks=True):
+                    _LOG.debug("find %s - '%s' -> '%s' is a symlink to a directory - ignoring", group.typ.name, entry.path, points_to)
+                    group.num_directory_symlinks += 1
+                    return
+
+                group.symlinks[entry.path] = entry
+                group.symlinks_by_abs_points_to[abs_points_to].append(entry)
+                return
+
+            _LOG.debug("find %s - entry name: %s", group.typ.name, entry.name)
+            group.add_entry_match(entry)
+
         def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig|None):
-            """Find all files belonging to 'group'"""
+            """Recursively find all files belonging to 'group'"""
             _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
             if abs_dir_path in checked_dirs:
                 _LOG.debug("directory already checked")
@@ -180,41 +218,7 @@ class FileGroups():
             dir_config = self.config_files.dir_config(Path(abs_dir_path), parent_conf)
 
             for entry in os.scandir(abs_dir_path):
-                if entry.is_dir(follow_symlinks=False):
-                    if entry.path in other_group.dirs:
-                        _LOG.debug("find %s - '%s' is in '%s' dir list and not in '%s' dir list", group.typ.name, entry.path, other_group.typ.name, group.typ.name)
-                        find_group(entry.path, other_group, group, dir_config)
-                        continue
-
-                    find_group(entry.path, group, other_group, dir_config)
-                    continue
-
-                if entry.name in dir_config.config_files:
-                    continue
-
-                current_group = group
-                if group.typ is GroupType.MAY_WORK_ON:
-                    # We need to check for match against configured protect patterns, if match, then the file must got to protect group instead
-                    pattern = dir_config.is_protected(entry)
-                    if pattern:
-                        _LOG.debug("find %s - '%s' is protected by regex %s, assigning to group %s instead.", group.typ.name, entry.path, pattern, other_group.typ.name)
-                        current_group = other_group
-
-                if entry.is_symlink():
-                    points_to = os.readlink(entry)
-                    abs_points_to = os.path.normpath(os.path.join(abs_dir_path, points_to))
-
-                    if entry.is_dir(follow_symlinks=True):
-                        _LOG.debug("find %s - '%s' -> '%s' is a symlink to a directory - ignoring", current_group.typ.name, entry.path, points_to)
-                        current_group.num_directory_symlinks += 1
-                        continue
-
-                    current_group.symlinks[entry.path] = entry
-                    current_group.symlinks_by_abs_points_to[abs_points_to].append(entry)
-                    continue
-
-                _LOG.debug("find %s - entry name: %s", current_group.typ.name, entry.name)
-                current_group.add_entry_match(entry)
+                handle_entry(abs_dir_path, group, other_group, dir_config, entry)
 
             checked_dirs.add(abs_dir_path)
 

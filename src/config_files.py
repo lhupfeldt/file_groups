@@ -31,11 +31,23 @@ class DirConfig():
     def is_protected(self, ff: FsPath):
         """If ff id protected by a regex pattern then return the pattern, otherwise return None."""
 
+        # _LOG.debug("ff '%s'", ff)
         for pattern in itertools.chain(self.protect["local"], self.protect["recursive"]):
             if os.sep in str(pattern):
-                # Match against full path
+                # _LOG.debug("Pattern '%s' has path sep", pattern)
                 assert os.path.isabs(ff), f"Expected absolute path, got '{ff}'"
+
+                # Search against full path
                 if pattern.search(os.fspath(ff)):
+                    return pattern
+
+                # Attempt exact match against path relative to , i.e. if pattern starts with '^'.
+                # This makes sense for patterns specified on commandline
+                cwd = os.getcwd()
+                ff_relative = str(Path(ff).relative_to(cwd))
+                # _LOG.debug("ff '%s' relative to start dir'%s'", ff_relative, cwd)
+
+                if pattern.match(ff_relative):
                     return pattern
 
             elif pattern.search(ff.name):
