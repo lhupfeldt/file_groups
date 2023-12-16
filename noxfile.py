@@ -2,6 +2,8 @@
 
 # Use nox >= 2023.4.22
 
+import os
+import glob
 from pathlib import Path
 
 import nox
@@ -17,7 +19,7 @@ nox.options.error_on_missing_interpreters = True
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
     session.install("-e", ".", "mypy>=1.5.1")
-    session.run("mypy", "-v", str(_HERE/"src"))
+    session.run("mypy", str(_HERE/"src"))
 
 
 # TODO: pylint-pytest does not support 3.12
@@ -28,6 +30,7 @@ def pylint(session):
     print("\nPylint src")
     disable_checks = "missing-module-docstring"
     session.run("pylint", "--fail-under", "10", "--disable", disable_checks, str(_HERE/"src"))
+
     print("\nPylint test sources")
     disable_checks += ",missing-class-docstring,missing-function-docstring,multiple-imports,invalid-name,duplicate-code"
     session.run("pylint", "--fail-under", "9.94", "--variable-rgx", r"[a-z_][a-z0-9_]{1,30}$", "--disable", disable_checks, str(_HERE/"test"))
@@ -37,3 +40,12 @@ def pylint(session):
 def unit(session):
     session.install(".", "pytest>=7.4.1", "coverage>=7.3.1", "pytest-cov>=4.1.0")
     session.run("pytest", "--import-mode=append", "--cov", "--cov-report=term-missing", f"--cov-config={_TEST_DIR}/.coveragerc", *session.posargs)
+
+
+@nox.session(python=_PY_VERSIONS[0], reuse_venv=True)
+def build(session):
+    session.install("build>=1.0.3", "twine>=4.0.2")
+    for ff in glob.glob("dist/*"):
+        os.remove(ff)
+    session.run("python", "-m", "build")
+    session.run("python", "-m", "twine", "check", "dist/*")

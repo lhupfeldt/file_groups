@@ -1,3 +1,5 @@
+"""Configuration file for 'pytest'"""
+
 import sys, os, re
 import errno
 import pathlib
@@ -10,6 +12,37 @@ from pytest import fixture
 
 
 _HERE = Path(__file__).absolute().parent
+
+_OUT_DIRS = {}
+
+def _test_key_shortener(key_prefix, key_suffix):
+    prefix = key_prefix.replace('test.', '').replace('_test', '')
+    suffix = key_suffix.replace(prefix, '').replace('test_', '').strip('_')
+    outd = prefix + '.' + suffix
+    args = (key_prefix, key_suffix)
+    assert _OUT_DIRS.setdefault(outd, args) == args, \
+        f"Out dir name '{outd}' reused! Previous from {_OUT_DIRS[outd]}, now  {args}. Test is not following namimg convention."
+    return outd
+
+
+def _test_node_shortener(request):
+    """Shorten test node name while still keeping it unique"""
+    return _test_key_shortener(request.node.module.__name__, request.node.name.split('[')[0])
+
+
+@fixture(name="out_dir")
+def _fixture_out_dir(request):
+    """Create unique top level test directory for a test."""
+
+    out_dir = _HERE/'out'/_test_node_shortener(request)
+
+    try:
+        shutil.rmtree(out_dir)
+    except OSError as ex:
+        if ex.errno != errno.ENOENT:
+            raise
+
+    return out_dir
 
 
 # Make sure we don't use config files from system or user home
@@ -68,26 +101,9 @@ _different_content_files_funcs = {}
 
 underscore_test_re = re.compile('_test$')
 
-def _test_key_shortener(key_prefix, key_postfix):
-    tfunc_prefix = key_prefix.replace('test.', 'test_') + '_'
-    return key_prefix + '.' + key_postfix.replace(tfunc_prefix, '')
-
-
 @fixture(name="duplicates_dir")
-def _fixture_duplicates_dir(request, monkeypatch):
+def _fixture_duplicates_dir(request, out_dir, monkeypatch):
     """Fixture expects 'same_content_files' and/or 'different_content_files' and possibly 'symlink_files' decorators to have been called for the test function."""
-
-    key_prefix = underscore_test_re.sub('', request.node.module.__name__)
-    test_key = _test_key_shortener(key_prefix, request.node.name.split('[')[0])
-    out_dir = pathlib.Path(os.path.join(_HERE, 'out', test_key))
-
-    try:
-        shutil.rmtree(out_dir)
-    except OSError as ex:
-        if ex.errno != errno.ENOENT:
-            raise
-    out_dir.mkdir(parents=True)
-
     has_files = False
     for scf in _same_content_files_funcs.get(out_dir, []):
         scf(out_dir)
@@ -127,9 +143,7 @@ def _generate_test_files(out_dir, content, append_fn, *paths):
 
 
 def _test_files_creator_decorator(func, file_content_funcs, new_file_content_func, *paths):
-    key_prefix = underscore_test_re.sub('', func.__module__)
-    test_key = _test_key_shortener(key_prefix, func.__name__)
-    out_dir = pathlib.Path(os.path.join(_HERE, 'out', test_key))
+    out_dir = _HERE/'out'/_test_key_shortener(func.__module__, func.__name__)
 
     dcfs = file_content_funcs.setdefault(out_dir, [])
     dcfs.append(new_file_content_func)
