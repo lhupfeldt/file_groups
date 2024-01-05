@@ -8,7 +8,7 @@ from appdirs import AppDirs
 
 import pytest
 
-from file_groups.config_files import ConfigFiles, DirConfig
+from file_groups.config_files import ConfigFiles, ProtectConfig, DirConfig
 
 from .conftest import same_content_files
 
@@ -165,10 +165,10 @@ def test_config_files_sys_user_config_files_additional_appdirs(set_conf_dirs, lo
     cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
-    assert cfgf._global_config == DirConfig({
+    assert cfgf._global_config == ProtectConfig({
         "local": set(),
         "recursive": set([re.compile(r'FFF.*\.jpeg'), re.compile(r'GGG.*\.mov'), re.compile(r'PP.*\.jpg')]),
-    }, None, ())
+    })
 
 
 def test_config_files_sys_user_config_files_replaced_appdirs(set_conf_dirs, log_debug):
@@ -177,10 +177,10 @@ def test_config_files_sys_user_config_files_replaced_appdirs(set_conf_dirs, log_
     cfgf.load_config_dir_files()
 
     _pp("cfgf._global_config:", cfgf._global_config)
-    assert cfgf._global_config == DirConfig({
+    assert cfgf._global_config == ProtectConfig({
         "local": set(),
         "recursive": set([re.compile(r'FFF.*\.jpeg'), re.compile(r'GGG.*\.mov')]),
-    }, None, ())
+    })
 
 
 @pytest.mark.parametrize("remember_configs", [False, True])
@@ -425,10 +425,10 @@ def test_config_files_specified(request, log_debug):
     assert "Merged directory config:" in log_debug.text
 
     _pp("cfgf._global_config:", cfgf._global_config)
-    assert cfgf._global_config == DirConfig({
+    assert cfgf._global_config == ProtectConfig({
         "local": set(),
         "recursive": set([re.compile(r"gusr1.*\.jpg")]),
-    }, None, ())  # TODO: should we have dir(s) and files in global DirConfig?
+    })  # TODO: should we have dir(s) and files in global DirConfig?
 
 
 # ---------- Errors ----------

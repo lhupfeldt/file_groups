@@ -22,11 +22,9 @@ class ConfigException(Exception):
 
 
 @dataclass
-class DirConfig():
-    """Hold protect config for a directory, or global (site or user) config."""
+class ProtectConfig():
+    """Hold global (site or user) protect config."""
     protect: dict[str, set[re.Pattern]]
-    config_dir: Path|None
-    config_files: Sequence[str]
 
     def is_protected(self, ff: FsPath):
         """If ff id protected by a regex pattern then return the pattern, otherwise return None."""
@@ -57,8 +55,21 @@ class DirConfig():
 
     def __json__(self):
         return {
-            "DirConfig": {
+            ProtectConfig.__name__: {
                 "protect": {key: list(str(pat) for pat in val) for key, val in self.protect.items()},
+            }
+        }
+
+
+@dataclass
+class DirConfig(ProtectConfig):
+    """Hold directory specific protect config."""
+    config_dir: Path|None
+    config_files: Sequence[str]
+
+    def __json__(self):
+        return {
+            DirConfig.__name__: super().__json__()[ProtectConfig.__name__] | {
                 "config_dir": str(self.config_dir),
                 "config_files": self.config_files,
             }
@@ -152,10 +163,10 @@ class ConfigFiles():
         ):
         super().__init__()
 
-        self._global_config = DirConfig({
+        self._global_config = ProtectConfig({
             "local": set(),
             "recursive": set(protect),
-        }, None, ())
+        })
 
         self.remember_configs = remember_configs
         self.per_dir_configs: dict[str, DirConfig] = {}  # key is abs_dir_path
@@ -176,7 +187,7 @@ class ConfigFiles():
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     def _read_and_validate_config_file_for_one_appname(  # pylint: disable=too-many-locals
-            self, conf_dir: Path, conf_file_name_pair: Sequence[str], parent_conf: DirConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
+            self, conf_dir: Path, conf_file_name_pair: Sequence[str], parent_conf: ProtectConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
     ) -> Tuple[dict[str, set[re.Pattern]], str|None]:
         """Read config file, validate keys and compile regexes and merge with parent.
 
@@ -238,7 +249,7 @@ class ConfigFiles():
         return protect_conf, conf_file.name
 
     def _read_and_validate_config_files(
-            self, conf_dir: Path, parent_conf: DirConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool) -> DirConfig:
+            self, conf_dir: Path, parent_conf: ProtectConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool) -> DirConfig:
         cfg_merge: dict[str, set[re.Pattern]] = {}
         cfg_files: list[str] = []
         for conf_file_name_pair in self.conf_file_names:
