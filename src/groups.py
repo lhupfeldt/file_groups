@@ -89,7 +89,7 @@ class FileGroups():
             Note: Since these files are excluded from protection, it means they er NOT protected!
         work_include: ONLY include files matching regex in the may_work_on files (does not apply to symlinks). Default: Include ALL.
 
-        config_files: Load config files. See config_files.ConfigFiles.
+        config_files: Load config files. See config_files.ConfigFiles. Note that the default 'None' means use the `config_files.ConfigFiles` class with default arguments.
     """
 
     def __init__(
