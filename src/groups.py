@@ -187,7 +187,7 @@ class FileGroups():
                 find_group(entry.path, group, other_group, dir_config)
                 return
 
-            if entry.name in dir_config.config_files:
+            if entry.name in self.config_files.conf_file_names:
                 return
 
             if entry.is_symlink():
@@ -225,7 +225,7 @@ class FileGroups():
         for any_dir in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
             parent_dir = Path(any_dir)
             while len(parent_dir.parts) > 1:
-                parent_conf = self.config_files.per_dir_configs.get(any_dir)
+                parent_conf = self.config_files.per_dir_configs.get(parent_dir)
                 if parent_conf:
                     break
 

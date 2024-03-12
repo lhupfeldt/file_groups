@@ -241,3 +241,18 @@ def hardlink_files(links):
 def _fixture_caplog_debug(caplog):
     caplog.set_level(logging.DEBUG)
     return caplog
+
+
+def dir_conf_files(protect_local, protect_recursive, *conf_files):
+    # Oops argument order opposite of DirConfig
+    """A decorator factory which adds a fixture to create config test files for the wrapped test function."""
+    conf = {
+        "file_groups": {
+            "protect": {
+                "local": protect_local,
+                "recursive": protect_recursive,
+            }
+        }
+    }
+
+    return same_content_files(repr(conf), *conf_files)

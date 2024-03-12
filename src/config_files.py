@@ -7,7 +7,7 @@ import itertools
 from pprint import pformat
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Sequence, cast
+from typing import Tuple, Sequence, Any
 
 from appdirs import AppDirs # type: ignore
 
@@ -24,13 +24,28 @@ class ConfigException(Exception):
 @dataclass
 class ProtectConfig():
     """Hold global (site or user) protect config."""
-    protect: dict[str, set[re.Pattern]]
+    protect_recursive: set[re.Pattern]
+
+    def __json__(self):
+        return {
+            ProtectConfig.__name__: {
+                "protect_recursive": [str(pat) for pat in self.protect_recursive],
+            }
+        }
+
+
+@dataclass
+class DirConfig(ProtectConfig):
+    """Hold directory specific protect config."""
+    protect_local: set[re.Pattern]
+    config_dir: Path|None
+    config_files: list[str]
 
     def is_protected(self, ff: FsPath):
         """If ff id protected by a regex pattern then return the pattern, otherwise return None."""
 
         # _LOG.debug("ff '%s'", ff)
-        for pattern in itertools.chain(self.protect["local"], self.protect["recursive"]):
+        for pattern in itertools.chain(self.protect_local, self.protect_recursive):
             if os.sep in str(pattern):
                 # _LOG.debug("Pattern '%s' has path sep", pattern)
                 assert os.path.isabs(ff), f"Expected absolute path, got '{ff}'"
@@ -55,21 +70,8 @@ class ProtectConfig():
 
     def __json__(self):
         return {
-            ProtectConfig.__name__: {
-                "protect": {key: list(str(pat) for pat in val) for key, val in self.protect.items()},
-            }
-        }
-
-
-@dataclass
-class DirConfig(ProtectConfig):
-    """Hold directory specific protect config."""
-    config_dir: Path|None
-    config_files: Sequence[str]
-
-    def __json__(self):
-        return {
             DirConfig.__name__: super().__json__()[ProtectConfig.__name__] | {
+                "protect_local": [str(pat) for pat in self.protect_local],
                 "config_dir": str(self.config_dir),
                 "config_files": self.config_files,
             }
@@ -136,15 +138,16 @@ class ConfigFiles():
         protect: An optional sequence of regexes to be added to protect[recursive] for all directories.
         ignore_config_dirs_config_files: Ignore config files in standard config directories.
         ignore_per_directory_config_files: Ignore config files in collected directories.
-        remember_configs: Store loaded and merged configs in `dir_configs` member variable.
+        remember_configs: Store loaded and merged configs in `per_dir_configs` member variable.
         app_dirs: Provide your own instance of AppDirs in addition to or as a replacement of the default to add config file names and path.
             Configuration from later entries have higher precedence.
             Note that if no AppDirs are specified, no config files will be loaded, neither from config dirs, nor from collected directories.
             See: https://pypi.org/project/appdirs/
 
     Members:
-       remember_configs: Whether per directory resolved/merged configs are stored in `dir_configs`.
-       dir_configs: dict[str: dict] Mapping from dir name to directory specific config dict. Only if remember_configs is True.
+       conf_file_names: File names which are config files.
+       remember_configs: Whether per directory resolved/merged configs are stored in `per_dir_configs`.
+       per_dir_configs: Mapping from dir name to directory specific config dict. Only if remember_configs is True.
     """
 
     default_appdirs: AppDirs = AppDirs("file_groups", "Hupfeldt_IT")
@@ -163,38 +166,34 @@ class ConfigFiles():
         ):
         super().__init__()
 
-        self._global_config = ProtectConfig({
-            "local": set(),
-            "recursive": set(protect),
-        })
-
+        self._global_config = ProtectConfig(set(protect))
         self.remember_configs = remember_configs
-        self.per_dir_configs: dict[str, DirConfig] = {}  # key is abs_dir_path
+        self.per_dir_configs: dict[Path, DirConfig] = {}  # key is abs_dir_path
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
 
         app_dirs = app_dirs or (ConfigFiles.default_appdirs,)
-        self.conf_file_names = tuple((apd.appname + ".conf", "." + apd.appname + ".conf") for apd in app_dirs)
-        _LOG.debug("Conf file names: %s", self.conf_file_names)
+        self.conf_file_name_pairs = tuple((apd.appname + ".conf", "." + apd.appname + ".conf") for apd in app_dirs)
+        _LOG.debug("Conf file names: %s", self.conf_file_name_pairs)
+        self.conf_file_names = list(itertools.chain.from_iterable(self.conf_file_name_pairs))
+
+        self.ignore_config_dirs_config_files = ignore_config_dirs_config_files
         self.config_dirs = []
-        if not ignore_config_dirs_config_files:
-            for appd in app_dirs:
-                self.config_dirs.extend(appd.site_config_dir.split(':'))
-            for appd in app_dirs:
-                self.config_dirs.append(appd.user_config_dir)
+        for appd in app_dirs:
+            self.config_dirs.extend(appd.site_config_dir.split(':'))
+        for appd in app_dirs:
+            self.config_dirs.append(appd.user_config_dir)
 
         self.config_file = config_file
 
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
-    def _read_and_validate_config_file_for_one_appname(  # pylint: disable=too-many-locals
-            self, conf_dir: Path, conf_file_name_pair: Sequence[str], parent_conf: ProtectConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
-    ) -> Tuple[dict[str, set[re.Pattern]], str|None]:
-        """Read config file, validate keys and compile regexes and merge with parent.
+    def _read_and_eval_config_file_for_one_appname(
+            self, conf_dir: Path, conf_file_name_pair: Sequence[str], ignore_config_files: bool
+    ) -> Tuple[dict[str, Any], Path|None]:
+        """Read config file.
 
         Error if config files are found both with and withput '.' prefix.
-        Merge parent conf into conf_dir conf (if any) and return the merged dict. The parent conf is not modified.
-
-        Return: merged config dict with compiled regexes, config file name. If no config files is found, then return inherited parent conf and None.
+        Return: Config dict, config file name, or if no config files is found, None, None.
         """
 
         assert conf_dir.is_absolute()
@@ -203,26 +202,40 @@ class ConfigFiles():
         match [conf_dir/cfn for cfn in conf_file_name_pair if (conf_dir/cfn).exists()]:
             case []:
                 _LOG.debug("No config file in directory %s", conf_dir)
-                no_conf_file: dict[str, set[re.Pattern]] = {
-                    "local": set(),
-                    "recursive": parent_conf.protect["recursive"]
-                }
-                return no_conf_file, None
+                return {}, None
 
             case [conf_file]:
                 if ignore_config_files:
                     _LOG.debug("Ignoring config file: %s", conf_file)
-                    return self._global_config.protect, None
+                    return {}, None
 
                 _LOG.debug("Read config file: %s", conf_file)
                 with open(conf_file, encoding="utf-8") as fh:
                     new_config = ast.literal_eval(fh.read())
                 _LOG.debug("%s", pformat(new_config))
+                return new_config, conf_file
 
             case config_files:
                 msg = f"More than one config file in dir '{conf_dir}': {[cf.name for cf in config_files]}."
                 _LOG.debug("%s", msg)
                 raise ConfigException(msg)
+
+    def _read_and_validate_config_file_for_one_appname(
+            self, conf_dir: Path, conf_file_name_pair: Sequence[str], valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool
+    ) -> Tuple[dict[str, set[re.Pattern]], Path|None]:
+        """Read config file, validate keys and compile regexes.
+
+        Error if config files are found both with and withput '.' prefix.
+
+        Return: merged config dict with compiled regexes, config file name. If no config files is found, then return empty sets and None.
+        """
+
+        new_config, conf_file = self._read_and_eval_config_file_for_one_appname(conf_dir, conf_file_name_pair, ignore_config_files)
+        if not new_config:
+            return {
+                "local": set(),
+                "recursive": set(),
+            }, None
 
         try:
             protect_conf: dict[str, set[re.Pattern]] = new_config[self._fg_key][self._protect_key]
@@ -236,8 +249,6 @@ class ConfigFiles():
                 raise ConfigException(msg)
 
             protect_conf[key] = set(re.compile(pattern) for pattern in val)
-            if key == "recursive":
-                protect_conf[key].update(parent_conf.protect[key])
 
         for key in self._valid_dir_protect_scopes:  # Do NOT use the 'valid_protect_scopes' argument here
             protect_conf.setdefault(key, set())
@@ -246,55 +257,34 @@ class ConfigFiles():
         if _LOG.isEnabledFor(lvl):
             _LOG.log(lvl, "Merged directory config:\n%s", pformat(new_config))
 
-        return protect_conf, conf_file.name
-
-    def _read_and_validate_config_files(
-            self, conf_dir: Path, parent_conf: ProtectConfig, valid_protect_scopes: Tuple[str, ...], ignore_config_files: bool) -> DirConfig:
-        cfg_merge: dict[str, set[re.Pattern]] = {}
-        cfg_files: list[str] = []
-        for conf_file_name_pair in self.conf_file_names:
-            cfg, cfg_file = self._read_and_validate_config_file_for_one_appname(
-                conf_dir, conf_file_name_pair, parent_conf, valid_protect_scopes, ignore_config_files)
-            for key, val in cfg.items():
-                cfg_merge.setdefault(key, set()).update(val)
-            if cfg_file:
-                cfg_files.append(cfg_file)
-
-        return DirConfig(cfg_merge, conf_dir, cfg_files)
+        return protect_conf, conf_file
 
     def load_config_dir_files(self) -> None:
         """Load config files from platform standard directories and specified config file, if any."""
 
-        def merge_one_config_to_global(conf_dir, new_config):
-            if self.remember_configs:
-                self.per_dir_configs[str(conf_dir)] = new_config
+        if not self.ignore_config_dirs_config_files:
+            _LOG.debug("config_dirs: %s", self.config_dirs)
+            for conf_dir in self.config_dirs:
+                conf_dir = Path(conf_dir)
+                if not conf_dir.exists():
+                    continue
 
-            self._global_config.protect["recursive"].update(new_config.protect.get("global", set()))
-            _LOG.debug("Merged global config:\n %s", new_config)
-
-            try:
-                del new_config.protect['global']
-            except KeyError:
-                pass
-
-        _LOG.debug("config_dirs: %s", self.config_dirs)
-        for conf_dir in self.config_dirs:
-            conf_dir = Path(conf_dir)
-            if not conf_dir.exists():
-                continue
-
-            new_config = self._read_and_validate_config_files(conf_dir, self._global_config, self._valid_config_dir_protect_scopes, False)
-            merge_one_config_to_global(conf_dir, new_config)
+                for conf_file_name_pair in self.conf_file_name_pairs:
+                    cfg, _ = self._read_and_validate_config_file_for_one_appname(
+                        conf_dir, conf_file_name_pair, self._valid_config_dir_protect_scopes, self.ignore_config_dirs_config_files)
+                    self._global_config.protect_recursive |= cfg.get("global", set())
 
         if self.config_file:
+            _LOG.debug("specified config_file: %s", self.config_file)
             conf_dir = self.config_file.parent.absolute()
             conf_name = self.config_file.name
-            cfg, filename = self._read_and_validate_config_file_for_one_appname(
-                conf_dir, (conf_name,), self._global_config, self._valid_config_dir_protect_scopes, ignore_config_files=False)
-            if not filename:
+            cfg, fpath = self._read_and_validate_config_file_for_one_appname(
+                conf_dir, (conf_name,), self._valid_config_dir_protect_scopes, self.ignore_config_dirs_config_files)
+            if not fpath:
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.config_file))
+            self._global_config.protect_recursive |= cfg.get("global", set())
 
-            merge_one_config_to_global(conf_dir, DirConfig(cfg, conf_dir, (cast(str, filename),)))
+        _LOG.debug("Merged global config:\n %s", self._global_config)
 
     def dir_config(self, conf_dir: Path, parent_conf: DirConfig|None) -> DirConfig:
         """Read and merge config file from directory 'conf_dir' with 'parent_conf'.
@@ -302,12 +292,24 @@ class ConfigFiles():
         If directory has no parent in the file_groups included dirs, then None should be supplied as parent_conf.
         """
 
-        new_config = self._read_and_validate_config_files(
-            conf_dir, parent_conf or self._global_config, self._valid_dir_protect_scopes, self.ignore_per_directory_config_files)
+        cfg_merge_local: set[re.Pattern] = set()
+        cfg_merge_recursive: set[re.Pattern] = set()
+        cfg_files: list[str] = []
+
+        for conf_file_name_pair in self.conf_file_name_pairs:
+            cfg, cfg_file = self._read_and_validate_config_file_for_one_appname(
+                conf_dir, conf_file_name_pair, self._valid_dir_protect_scopes, self.ignore_per_directory_config_files)
+            cfg_merge_local.update(cfg.get("local", set()))
+            cfg_merge_recursive.update(cfg.get("recursive", set()))
+            if cfg_file:
+                cfg_files.append(cfg_file.name)
+
+        parent_protect_recursive = parent_conf.protect_recursive if parent_conf else self._global_config.protect_recursive
+        new_config = DirConfig(cfg_merge_recursive | parent_protect_recursive, cfg_merge_local, conf_dir, cfg_files)
         _LOG.debug("new_config:\n %s", new_config)
 
         if self.remember_configs:
-            self.per_dir_configs[str(conf_dir)] = new_config
+            self.per_dir_configs[conf_dir] = new_config
             # _LOG.debug("per_dir_configs:\n %s", self.per_dir_configs)
 
         return new_config
