@@ -25,7 +25,7 @@ def typecheck(session):
 # TODO: pylint-pytest does not support 3.12
 @nox.session(python="3.11", reuse_venv=True)
 def pylint(session):
-    session.install(".", "pylint>=2.16.1,<3.0.0", "pylint-pytest>=1.1.2")
+    session.install(".", "pylint>=3.3.1", "pylint-pytest>=1.1.8")
 
     print("\nPylint src")
     disable_checks = "missing-module-docstring"

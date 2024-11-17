@@ -22,7 +22,7 @@ class FileHandlerCompare(FileHandler):
         fcmp: Object providing compare function.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path], fcmp: CompareFiles,
             *,

@@ -28,7 +28,7 @@ class FileHandler(FileGroups):
            they could have logically been made to point to a file in a protect dir.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,

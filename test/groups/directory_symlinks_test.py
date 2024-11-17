@@ -15,10 +15,10 @@ def test_file_groups_specified_symlinks_to_protect_dirs(duplicates_dir):
         assert ck.ckfl('may_work_on.files', 'df/f11', 'df/f21')
         pytest.xfail('TODO: option to not follow specified protect symlinks?')
 
-        assert ck.fg.must_protect.num_directories == 0
-        assert ck.fg.must_protect.num_directory_symlinks == 0
-        assert ck.fg.may_work_on.num_directories == 1
-        assert ck.fg.may_work_on.num_directory_symlinks == 0
+        # assert ck.fg.must_protect.num_directories == 0
+        # assert ck.fg.must_protect.num_directory_symlinks == 0
+        # assert ck.fg.may_work_on.num_directories == 1
+        # assert ck.fg.may_work_on.num_directory_symlinks == 0
 
 
 @same_content_files("Hi", 'df/f11', 'ki/f12')

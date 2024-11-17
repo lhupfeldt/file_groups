@@ -157,7 +157,7 @@ class ConfigFiles():
     _valid_dir_protect_scopes = ("local", "recursive")
     _valid_config_dir_protect_scopes = ("local", "recursive", "global")
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments,too-many-arguments
             self, protect: Sequence[re.Pattern] = (),
             ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=True,
             app_dirs: Sequence[AppDirs]|None = None,
