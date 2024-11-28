@@ -3,15 +3,15 @@
 # Use nox >= 2023.4.22
 
 import os
-import glob
 from pathlib import Path
+import shutil
 
 import nox
 
 
 _HERE = Path(__file__).absolute().parent
 _TEST_DIR = _HERE/"test"
-_PY_VERSIONS = ["3.12", "3.11", "3.10"]
+_PY_VERSIONS = ['3.13', '3.12', '3.11', '3.10']
 
 nox.options.error_on_missing_interpreters = True
 
@@ -22,8 +22,7 @@ def typecheck(session):
     session.run("mypy", str(_HERE/"src"))
 
 
-# TODO: pylint-pytest does not support 3.12
-@nox.session(python="3.11", reuse_venv=True)
+@nox.session(python=_PY_VERSIONS[0], reuse_venv=True)
 def pylint(session):
     session.install(".", "pylint>=3.3.1", "pylint-pytest>=1.1.8")
 
@@ -44,8 +43,8 @@ def unit(session):
 
 @nox.session(python=_PY_VERSIONS[0], reuse_venv=True)
 def build(session):
+    if Path("dist").is_dir():
+        shutil.rmtree("dist")
     session.install("build>=1.0.3", "twine>=4.0.2")
-    for ff in glob.glob("dist/*"):
-        os.remove(ff)
     session.run("python", "-m", "build")
     session.run("python", "-m", "twine", "check", "dist/*")
