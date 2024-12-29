@@ -11,7 +11,7 @@ import nox
 
 _HERE = Path(__file__).absolute().parent
 _TEST_DIR = _HERE/"test"
-_PY_VERSIONS = ['3.13', '3.12', '3.11', '3.10']
+_PY_VERSIONS = ['3.13', '3.12', '3.11']
 
 nox.options.error_on_missing_interpreters = True
 
