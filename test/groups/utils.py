@@ -58,7 +58,7 @@ class FGC():
         group = getattr(self.fg, group_name)
         return getattr(group, attr_name)
 
-    def ckfl(self, attr_name, *rel_paths: str):
+    def ckfl(self, attr_name, *rel_paths: str|os.PathLike):
         self.checked.add(attr_name)
         return ckfl(attr_name, self._ggetattr(attr_name), *rel_paths)
 
