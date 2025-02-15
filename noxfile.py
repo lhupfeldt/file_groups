@@ -19,7 +19,7 @@ nox.options.error_on_missing_interpreters = True
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
     session.install("-e", ".", "mypy>=1.5.1")
-    session.run("mypy", str(_HERE/"src"))
+    session.run("mypy", "--strict", "--check-untyped", "--implicit-optional", "--disable-error-code=type-arg", str(_HERE/"src"))
 
 
 @nox.session(python=_PY_VERSIONS[0], reuse_venv=True)

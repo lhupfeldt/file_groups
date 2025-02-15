@@ -2,13 +2,12 @@ import os
 from pathlib import Path
 import shutil
 import re
-from contextlib import contextmanager
 import logging
 from typing import Sequence
 
 from .groups import FileGroups
 from .config_files import ConfigFiles
-
+from .types import FsPath
 
 _LOG = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class FileHandler(FileGroups):
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
             config_files: ConfigFiles|None = None,
             dry_run: bool,
-            delete_symlinks_instead_of_relinking=False):
+            delete_symlinks_instead_of_relinking: bool =False):
         super().__init__(
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
             protect_exclude=protect_exclude, work_include=work_include,
@@ -55,7 +54,7 @@ class FileHandler(FileGroups):
         self.num_moved = 0
         self.num_relinked = 0
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset internal housekeeping of deleted/renamed/moved files.
 
         This makes it possible to do a 'dry_run' and an actual run without collecting files again.
@@ -69,7 +68,7 @@ class FileHandler(FileGroups):
         self.num_moved = 0
         self.num_relinked = 0
 
-    def _no_symlink_check_registered_delete(self, delete_path: str):
+    def _no_symlink_check_registered_delete(self, delete_path: str) -> None:
         """Does a registered delete without checking for symlinks, so that we can use this in the symlink handling."""
         assert isinstance(delete_path, str)
         assert os.path.isabs(delete_path), f"Expected absolute path, got '{delete_path}'"
@@ -84,7 +83,7 @@ class FileHandler(FileGroups):
         if delete_path in self.may_work_on.symlinks:
             self.deleted_symlinks.add(delete_path)
 
-    def _handle_single_symlink_chain(self, symlnk_path: str, keep_path):
+    def _handle_single_symlink_chain(self, symlnk_path: str, keep_path: str|FsPath|None) -> None:
         """TODO doc - Symlink will only be deleted if it is in self.may_work_on.files."""
 
         assert os.path.isabs(symlnk_path), f"Expected an absolute path, got '{symlnk_path}'"
@@ -141,8 +140,12 @@ class FileHandler(FileGroups):
 
         self.num_relinked += 1
 
-    def _fix_symlinks_to_deleted_or_moved_files(self, from_path: str, to_path):
-        """Any symlinks pointing to 'from_path' will be change to point to 'to_path'"""
+    def _fix_symlinks_to_deleted_or_moved_files(self, from_path: str, to_path: str|FsPath|None) -> None:
+        """Any symlinks pointing to 'from_path' will be change to point to 'to_path' or deleted.
+
+        If 'to_path' is None then delete full chains of symlinks in 'may_work_on' dirs.
+        """
+
         _LOG.debug("_fix_symlinks_to_deleted_or_moved_files(self, %s, %s)", from_path, to_path)
 
         for symlnk in self.must_protect.symlinks_by_abs_points_to.get(from_path, ()):
@@ -153,13 +156,13 @@ class FileHandler(FileGroups):
             _LOG.debug("_fix_symlinks_to_deleted_or_moved_files, may_work_on symlink: '%s'.", symlnk)
             self._handle_single_symlink_chain(os.fspath(symlnk), to_path)
 
-    def registered_delete(self, delete_path: str, corresponding_keep_path) -> Path|None:
+    def registered_delete(self, delete_path: str, corresponding_keep_path: str|FsPath|None) -> Path|None:
         """Return `corresponding_keep_path` as absolute Path"""
         self._no_symlink_check_registered_delete(delete_path)
         self._fix_symlinks_to_deleted_or_moved_files(delete_path, corresponding_keep_path)
         return Path(corresponding_keep_path).absolute() if corresponding_keep_path else None
 
-    def _registered_move_or_rename(self, from_path: str, to_path, *, is_move) -> Path:
+    def _registered_move_or_rename(self, from_path: str, to_path: str|FsPath, *, is_move: bool) -> Path:
         """Return `to_path` as absolute Path"""
         assert isinstance(from_path, str)
         assert os.path.isabs(from_path), f"Expected absolute path, got '{from_path}'"
@@ -189,20 +192,18 @@ class FileHandler(FileGroups):
         self._fix_symlinks_to_deleted_or_moved_files(from_path, to_path)
         return res
 
-    def registered_move(self, from_path: str, to_path) -> Path:
+    def registered_move(self, from_path: str, to_path: str|FsPath) -> Path:
         """Return `to_path` as absolute Path"""
         return self._registered_move_or_rename(from_path, to_path, is_move=True)
 
-    def registered_rename(self, from_path: str, to_path) -> Path:
+    def registered_rename(self, from_path: str, to_path: str|FsPath) -> Path:
         """Return `to_path` as absolute Path"""
         return self._registered_move_or_rename(from_path, to_path, is_move=False)
 
-    @contextmanager
-    def stats(self):
+    def stats(self) -> None:
         log = _LOG.getChild("stats")
         lvl = logging.INFO
         if not log.isEnabledFor(lvl):
-            yield
             return
 
         prefix = ''
@@ -218,10 +219,3 @@ class FileHandler(FileGroups):
         log.log(lvl, "%srenamed: %s", prefix, self.num_renamed)
         log.log(lvl, "%smoved: %s", prefix, self.num_moved)
         log.log(lvl, "%srelinked: %s", prefix, self.num_relinked)
-
-        try:
-            yield
-
-        finally:
-            if self.dry_run:
-                log.log(lvl, "*** DRY RUN ***")

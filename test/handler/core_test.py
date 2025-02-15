@@ -412,8 +412,8 @@ def test_stats(duplicates_dir, log_debug):
     ck = FP(fh, str(Path('df/f11').absolute()), 'df/z', log_debug)
 
     assert ck.check_rename(dry=True)
-    with fh.stats():
-        print('did nothing')
+    fh.stats()
+    print('did nothing')
 
     out = log_debug.text
     assert 'DRY' in out
@@ -421,8 +421,8 @@ def test_stats(duplicates_dir, log_debug):
     log_debug.clear()
 
     assert ck.check_rename(dry=False)
-    with fh.stats():
-        print('did stuff')
+    fh.stats()
+    print('did stuff')
 
     out = log_debug.text
     assert 'DRY' not in out
@@ -436,8 +436,7 @@ def test_no_info_log_stats(duplicates_dir, caplog):
     FP(fh, str(Path('df/f11').absolute()), 'df/z', caplog)
 
     caplog.set_level(logging.WARNING)
-    with fh.stats():
-        pass
+    fh.stats()
 
     out = caplog.text
     assert "DRY" not in out

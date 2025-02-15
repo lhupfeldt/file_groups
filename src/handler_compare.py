@@ -29,7 +29,7 @@ class FileHandlerCompare(FileHandler):
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
             config_files: ConfigFiles|None = None,
             dry_run: bool,
-            delete_symlinks_instead_of_relinking=False):
+            delete_symlinks_instead_of_relinking: bool = False):
         super().__init__(
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
             protect_exclude=protect_exclude, work_include=work_include,

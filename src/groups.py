@@ -35,14 +35,14 @@ class _Group():
     num_directories: int = 0
     num_directory_symlinks: int = 0
 
-    def add_entry_match(self, entry: DirEntry):
+    def add_entry_match(self, entry: DirEntry) -> None:
         """Abstract, but abstract and dataclass does not work with mypy. https://github.com/python/mypy/issues/500"""
 
 @dataclass
 class _IncludeMatchGroup(_Group):
     include: re.Pattern|None = None
 
-    def add_entry_match(self, entry: DirEntry):
+    def add_entry_match(self, entry: DirEntry) -> None:
         if not self.include:
             self.files[entry.path] = entry
             return
@@ -58,7 +58,7 @@ class _IncludeMatchGroup(_Group):
 class _ExcludeMatchGroup(_Group):
     exclude: re.Pattern|None = None
 
-    def add_entry_match(self, entry: DirEntry):
+    def add_entry_match(self, entry: DirEntry) -> None:
         if not self.exclude:
             self.files[entry.path] = entry
             return
@@ -169,7 +169,7 @@ class FileGroups():
 
         checked_dirs: set[str] = set()
 
-        def handle_entry(abs_dir_path: str, group: _Group, other_group: _Group, dir_config: DirConfig, entry: DirEntry):
+        def handle_entry(abs_dir_path: str, group: _Group, other_group: _Group, dir_config: DirConfig, entry: DirEntry) -> None:
             """Put entry in  the correct group. Call 'find_group' if entry is a directory."""
             if group.typ is GroupType.MAY_WORK_ON:
                 # Check for match against configured protect patterns, if match, then the file must got to protect group instead
@@ -207,7 +207,7 @@ class FileGroups():
             _LOG.debug("find %s - entry name: %s", group.typ.name, entry.name)
             group.add_entry_match(entry)
 
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig|None):
+        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig|None) -> None:
             """Recursively find all files belonging to 'group'"""
             _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
             if abs_dir_path in checked_dirs:
@@ -238,7 +238,7 @@ class FileGroups():
             else:
                 find_group(any_dir, self.may_work_on, self.must_protect, parent_conf)
 
-    def dump(self):
+    def dump(self) -> None:
         """Log collected files. This may be A LOT of output for large directories."""
 
         log = _LOG.getChild("dump")
@@ -280,7 +280,7 @@ class FileGroups():
 
         log.log(lvl, "")
 
-    def stats(self):
+    def stats(self) -> None:
         """Log collection numbers."""
         log = _LOG.getChild("stats")
         lvl = logging.INFO

@@ -26,7 +26,7 @@ class ProtectConfig():
     """Hold global (site or user) protect config."""
     protect_recursive: set[re.Pattern]
 
-    def __json__(self):
+    def __json__(self) -> dict[str, Any]:
         return {
             ProtectConfig.__name__: {
                 "protect_recursive": [str(pat) for pat in self.protect_recursive],
@@ -41,13 +41,13 @@ class DirConfig(ProtectConfig):
     config_dir: Path|None
     config_files: list[str]
 
-    def is_protected(self, ff: FsPath):
+    def is_protected(self, ff: FsPath) -> re.Pattern|None:
         """If ff id protected by a regex pattern then return the pattern, otherwise return None."""
 
         # _LOG.debug("ff '%s'", ff)
         for pattern in itertools.chain(self.protect_local, self.protect_recursive):
             if os.sep in str(pattern):
-                # _LOG.debug("Pattern '%s' has path sep", pattern)
+                # _LOG.debug("re.Pattern '%s' has path sep", pattern)
                 assert os.path.isabs(ff), f"Expected absolute path, got '{ff}'"
 
                 # Search against full path
@@ -68,7 +68,7 @@ class DirConfig(ProtectConfig):
 
         return None
 
-    def __json__(self):
+    def __json__(self) -> dict[str, Any]:
         return {
             DirConfig.__name__: super().__json__()[ProtectConfig.__name__] | {
                 "protect_local": [str(pat) for pat in self.protect_local],
@@ -159,7 +159,7 @@ class ConfigFiles():
 
     def __init__(  # pylint: disable=too-many-positional-arguments,too-many-arguments
             self, protect: Sequence[re.Pattern] = (),
-            ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False, remember_configs=True,
+            ignore_config_dirs_config_files: bool = False, ignore_per_directory_config_files: bool =False, remember_configs: bool =True,
             app_dirs: Sequence[AppDirs]|None = None,
             *,
             config_file: Path|None = None,
