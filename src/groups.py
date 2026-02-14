@@ -9,7 +9,8 @@ from enum import Enum
 import logging
 from typing import Sequence, cast
 
-from .config_files import DirConfig, ConfigFiles
+from .config.dir_config import DirConfig
+from .config.files import ConfigFiles
 
 
 _LOG = logging.getLogger(__name__)
@@ -89,7 +90,8 @@ class FileGroups():
             Note: Since these files are excluded from protection, it means they er NOT protected!
         work_include: ONLY include files matching regex in the may_work_on files (does not apply to symlinks). Default: Include ALL.
 
-        config_files: Load config files. See config_files.ConfigFiles. Note that the default 'None' means use the `config_files.ConfigFiles` class with default arguments.
+        config_files: Load config files. See config_files.ConfigFiles and config_files.ConfigFileLoader.
+            Note that the default 'None' means use the `config_files.ConfigFiles` class with default arguments.
     """
 
     def __init__(
@@ -102,6 +104,7 @@ class FileGroups():
 
         self.config_files = config_files or ConfigFiles()
         self.config_files.load_config_dir_files()
+        self.per_dir_configs: dict[Path, DirConfig] = {}  # key is abs_dir_path
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
         protect_dirs: dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
@@ -207,7 +210,7 @@ class FileGroups():
             _LOG.debug("find %s - entry name: %s", group.typ.name, entry.name)
             group.add_entry_match(entry)
 
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig|None) -> None:
+        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig) -> None:
             """Recursively find all files belonging to 'group'"""
             _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
             if abs_dir_path in checked_dirs:
@@ -215,7 +218,10 @@ class FileGroups():
                 return
 
             group.num_directories += 1
-            dir_config = self.config_files.dir_config(Path(abs_dir_path), parent_conf)
+            conf_dir = Path(abs_dir_path)
+            dir_config = self.config_files.dir_config(conf_dir, parent_conf)
+            self.per_dir_configs[conf_dir] = dir_config
+            # _LOG.debug("per_dir_configs:\n %s", self.per_dir_configs)
 
             for entry in os.scandir(abs_dir_path):
                 handle_entry(abs_dir_path, group, other_group, dir_config, entry)
@@ -225,13 +231,13 @@ class FileGroups():
         for any_dir in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
             parent_dir = Path(any_dir)
             while len(parent_dir.parts) > 1:
-                parent_conf = self.config_files.per_dir_configs.get(parent_dir)
+                parent_conf = self.per_dir_configs.get(parent_dir)
                 if parent_conf:
                     break
 
                 parent_dir = parent_dir.parent
             else:
-                parent_conf = None
+                parent_conf = self.config_files.global_config
 
             if any_dir in self.must_protect.dirs:
                 find_group(any_dir, self.must_protect, self.may_work_on, parent_conf)

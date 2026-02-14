@@ -5,9 +5,9 @@ import re
 import logging
 from typing import Sequence
 
-from .groups import FileGroups
-from .config_files import ConfigFiles
 from .types import FsPath
+from .config.files import ConfigFiles
+from .groups import FileGroups
 
 _LOG = logging.getLogger(__name__)
 

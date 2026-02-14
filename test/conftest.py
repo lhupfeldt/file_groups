@@ -8,7 +8,7 @@ import functools
 from pathlib import Path
 import logging
 
-from pytest import fixture
+from pytest import fixture  # type: ignore
 
 
 _HERE = Path(__file__).absolute().parent

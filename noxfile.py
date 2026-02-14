@@ -10,6 +10,7 @@ import nox
 
 
 _HERE = Path(__file__).absolute().parent
+_SRC_DIR = _HERE/"src"
 _TEST_DIR = _HERE/"test"
 _PY_VERSIONS = ['3.13', '3.12', '3.11']
 
@@ -18,8 +19,11 @@ nox.options.error_on_missing_interpreters = True
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)
 def typecheck(session):
-    session.install("-e", ".", "mypy>=1.5.1")
-    session.run("mypy", "--strict", "--check-untyped", "--implicit-optional", "--disable-error-code=type-arg", str(_HERE/"src"))
+    session.install(".", "mypy>=1.5.1")
+    print("\nMypy src")
+    session.run("mypy", "--strict", "--check-untyped", "--implicit-optional", "--disable-error-code=type-arg", str(_SRC_DIR))
+    # print("\nMypy test sources")
+    # session.run("mypy", "--check-untyped", "--implicit-optional", "--disable-error-code=type-arg", str(_TEST_DIR))
 
 
 @nox.session(python=_PY_VERSIONS[0], reuse_venv=True)
@@ -28,11 +32,11 @@ def pylint(session):
 
     print("\nPylint src")
     disable_checks = "missing-module-docstring"
-    session.run("pylint", "--fail-under", "10", "--disable", disable_checks, str(_HERE/"src"))
+    session.run("pylint", "--fail-under", "10", "--disable", disable_checks, str(_SRC_DIR))
 
     print("\nPylint test sources")
     disable_checks += ",missing-class-docstring,missing-function-docstring,multiple-imports,invalid-name,duplicate-code"
-    session.run("pylint", "--fail-under", "9.94", "--variable-rgx", r"[a-z_][a-z0-9_]{1,30}$", "--disable", disable_checks, str(_HERE/"test"))
+    session.run("pylint", "--fail-under", "9.94", "--variable-rgx", r"[a-z_][a-z0-9_]{1,30}$", "--disable", disable_checks, str(_TEST_DIR))
 
 
 @nox.session(python=_PY_VERSIONS, reuse_venv=True)

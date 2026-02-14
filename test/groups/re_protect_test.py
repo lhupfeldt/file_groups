@@ -1,10 +1,10 @@
 import re
 
 from file_groups.groups import FileGroups
-from file_groups.config_files import ConfigFiles
+from file_groups.config.files import ConfigFiles
 
 from ..conftest import same_content_files
-from ..config_files_test import set_conf_dirs, dir_conf_files
+from ..config.config_files_test import set_conf_dirs, dir_conf_files
 from .utils import FGC
 
 

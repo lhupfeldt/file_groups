@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from file_groups.handler import FileHandler
-from file_groups.config_files import ConfigFiles
+from file_groups.config.files import ConfigFiles
 
 from ..conftest import same_content_files
 

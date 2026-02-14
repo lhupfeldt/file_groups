@@ -1,7 +1,8 @@
 from pathlib import Path
+import logging
 from timeit import timeit
 
-from guppy import hpy
+from guppy import hpy  # type: ignore
 
 from file_groups.groups import FileGroups
 
@@ -17,6 +18,7 @@ def test_basic_collect():
     assert False
 
 
-def test_debug_basic_collect():
-    exec_time = timeit(lambda: FileGroups([_HOME_DIR], [_HOME_DIR/'Pictures'], debug=True), number=1)
+def test_debug_basic_collect(caplog):
+    caplog.set_level(logging.DEBUG)
+    exec_time = timeit(lambda: FileGroups([_HOME_DIR], [_HOME_DIR/'Pictures']), number=1)
     assert exec_time < 10

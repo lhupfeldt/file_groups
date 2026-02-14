@@ -7,7 +7,7 @@ from typing import Sequence
 from .compare_files import CompareFiles
 from .types import FsPath
 from .handler import FileHandler
-from .config_files import ConfigFiles
+from .config.files import ConfigFiles
 
 
 _LOG = logging.getLogger(__name__)
