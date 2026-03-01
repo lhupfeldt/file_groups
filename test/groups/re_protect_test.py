@@ -1,7 +1,7 @@
 import re
 
 from file_groups.groups import FileGroups
-from file_groups.config.files import ConfigFiles
+from file_groups.config.config_handler import ConfigHandler
 
 from ..conftest import same_content_files
 from ..config.config_files_test import set_conf_dirs, dir_conf_files
@@ -22,7 +22,7 @@ def test_file_groups_group_files_by_config_protect(duplicates_dir, set_conf_dirs
        'ki/df/KEEP_ME.jpg' should be protected.
     """
 
-    with FGC(FileGroups(['ki'], ['df', 'ki/df'], config_files=ConfigFiles(protect=[re.compile(r'(?i)imatchopt\..*$')])), duplicates_dir) as ck:
+    with FGC(FileGroups(['ki'], ['df', 'ki/df'], config_handler=ConfigHandler(protect=[re.compile(r'(?i)imatchopt\..*$')])), duplicates_dir) as ck:
         assert ck.ckfl(
             'must_protect.files',
             'df/df/AND_ME.JPG', 'df/df/KEEP_ME.jpg', 'df/df/df/And_Me.jpg', 'df/df/df/and_me.jpeg',
@@ -43,6 +43,6 @@ def test_file_groups_group_dirs_by_config_file_protect(duplicates_dir, set_conf_
 
 @same_content_files('B', 'df/df/KEEP_ME/a.jpg', 'df/df/df/a.jpg', 'df/df/df/df/KEEP_ME/a.jpg')
 def test_file_groups_group_dirs_with_path(duplicates_dir, log_debug):
-    with FGC(FileGroups([], ['df'], config_files=ConfigFiles(protect=[re.compile(r'^df/df/KEEP_ME$')])), duplicates_dir) as ck:
+    with FGC(FileGroups([], ['df'], config_handler=ConfigHandler(protect=[re.compile(r'^df/df/KEEP_ME$')])), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'df/df/KEEP_ME/a.jpg')
         assert ck.ckfl('may_work_on.files', 'df/df/df/a.jpg', 'df/df/df/df/KEEP_ME/a.jpg')

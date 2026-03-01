@@ -10,7 +10,7 @@ import logging
 from typing import Sequence, cast
 
 from .config.dir_config import DirConfig
-from .config.files import ConfigFiles
+from .config.config_handler import ConfigHandler
 
 
 _LOG = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class FileGroups():
     Note that directory symlinks are followed for the specified arguments!, but never for any subdirectories.
 
     Config Files
-    See `config_files` for description of config file format and arguments.
+    See `config.file_loader` for description of config file format and arguments.
 
     Arguments:
         protect_dirs_seq: Directories in which (regular) files may not be deleted/modified.
@@ -90,8 +90,8 @@ class FileGroups():
             Note: Since these files are excluded from protection, it means they er NOT protected!
         work_include: ONLY include files matching regex in the may_work_on files (does not apply to symlinks). Default: Include ALL.
 
-        config_files: Load config files. See config_files.ConfigFiles and config_files.ConfigFileLoader.
-            Note that the default 'None' means use the `config_files.ConfigFiles` class with default arguments.
+        config_handler: Load config files. See config.config_handler.ConfigHandler and config.file_loader.ConfigFileLoader.
+            Note that the default 'None' means use the `config.config_handler.ConfigHandler` class with default arguments.
     """
 
     def __init__(
@@ -99,11 +99,11 @@ class FileGroups():
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
-            config_files: ConfigFiles|None = None):
+            config_handler: ConfigHandler|None = None):
         super().__init__()
 
-        self.config_files = config_files or ConfigFiles()
-        self.config_files.load_config_dir_files()
+        self.config_handler = config_handler or ConfigHandler()
+        self.config_handler.load_config_dir_files()
         self.per_dir_configs: dict[Path, DirConfig] = {}  # key is abs_dir_path
 
         # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
@@ -190,7 +190,7 @@ class FileGroups():
                 find_group(entry.path, group, other_group, dir_config)
                 return
 
-            if entry.name in self.config_files.conf_file_names:
+            if entry.name in self.config_handler.conf_file_names:
                 return
 
             if entry.is_symlink():
@@ -219,7 +219,7 @@ class FileGroups():
 
             group.num_directories += 1
             conf_dir = Path(abs_dir_path)
-            dir_config = self.config_files.dir_config(conf_dir, parent_conf)
+            dir_config = self.config_handler.dir_config(conf_dir, parent_conf)
             self.per_dir_configs[conf_dir] = dir_config
             # _LOG.debug("per_dir_configs:\n %s", self.per_dir_configs)
 
@@ -237,7 +237,7 @@ class FileGroups():
 
                 parent_dir = parent_dir.parent
             else:
-                parent_conf = self.config_files.global_config
+                parent_conf = self.config_handler.global_config
 
             if any_dir in self.must_protect.dirs:
                 find_group(any_dir, self.must_protect, self.may_work_on, parent_conf)

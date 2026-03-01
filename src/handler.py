@@ -6,7 +6,7 @@ import logging
 from typing import Sequence
 
 from .types import FsPath
-from .config.files import ConfigFiles
+from .config.config_handler import ConfigHandler
 from .groups import FileGroups
 
 _LOG = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class FileHandler(FileGroups):
     Re-link symlinks when a file being deleted has a corresponding file.
 
     Arguments:
-        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include, config_files: See `FileGroups` class.
+        protect_dirs_seq, work_dirs_seq, protect_exclude, work_include, config_handler: See `FileGroups` class.
         dry_run: Don't change any files.
         delete_symlinks_instead_of_relinking: Normal operation is to re-link to a 'corresponding' or renamed file when renaming or deleting a file.
            If delete_symlinks_instead_of_relinking is true, then symlinks in work_on dirs pointing to renamed/deletes files will be deleted even if
@@ -32,13 +32,13 @@ class FileHandler(FileGroups):
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
-            config_files: ConfigFiles|None = None,
+            config_handler: ConfigHandler|None = None,
             dry_run: bool,
             delete_symlinks_instead_of_relinking: bool =False):
         super().__init__(
             protect_dirs_seq=protect_dirs_seq, work_dirs_seq=work_dirs_seq,
             protect_exclude=protect_exclude, work_include=work_include,
-            config_files=config_files)
+            config_handler=config_handler)
 
         self.dry_run = dry_run
         self.delete_symlinks_instead_of_relinking = delete_symlinks_instead_of_relinking

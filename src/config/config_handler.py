@@ -15,7 +15,7 @@ from .file_loader import ConfigFileLoader
 _LOG = logging.getLogger(__name__)
 
 
-class ConfigFiles():
+class ConfigHandler():
     r"""Handle config files and file protection options.
 
     Config files are searched for in the standard config directories on the platform AND can be loaded from any collected directory.
@@ -57,7 +57,7 @@ class ConfigFiles():
         self.global_config = DirConfig(set(protect), set(), None, [])
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
 
-        app_dirs = app_dirs or (ConfigFiles.default_appdirs,)
+        app_dirs = app_dirs or (ConfigHandler.default_appdirs,)
         self.conf_file_name_pairs = tuple((apd.appname + ".conf", "." + apd.appname + ".conf") for apd in app_dirs)
         _LOG.debug("Conf file names: %s", self.conf_file_name_pairs)
 

@@ -22,7 +22,7 @@ class ConfigException(Exception):
 
 
 class ConfigFileLoader():
-    r"""Handle config file loadinf. Also See `ConfigFiles` for more info.
+    r"""Handle config file loadinf. Also See `ConfigHandler` for more info.
 
     The content of a conf file is a Python dict with the following structure.
 

@@ -2,7 +2,7 @@ import re
 import pprint
 
 from file_groups.groups import FileGroups
-from file_groups.config.files import ConfigFiles
+from file_groups.config.config_handler import ConfigHandler
 
 from ..conftest import same_content_files, dir_conf_files
 from ..config.config_files_test import set_conf_dirs
@@ -13,12 +13,12 @@ from .utils import FGC
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ki/file_groups.conf')
 @dir_conf_files([r'a.*\.b'], [r'zzz2.*'], 'df/.file_groups.conf')
 def test_file_groups_sys_user_config_files_no_global(duplicates_dir, set_conf_dirs):
-    with FGC(FileGroups(['ki'], ['df'], config_files=ConfigFiles()), duplicates_dir) as ck:
+    with FGC(FileGroups(['ki'], ['df'], config_handler=ConfigHandler()), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/Af11.jpg')
         assert ck.ckfl('may_work_on.files', 'df/Bf11.jpg')
 
-    pprint.pprint(ck.fg.config_files.global_config)
-    assert ck.fg.config_files.global_config.protect_recursive == set()
+    pprint.pprint(ck.fg.config_handler.global_config)
+    assert ck.fg.config_handler.global_config.protect_recursive == set()
 
     pprint.pprint(ck.fg.per_dir_configs)
 

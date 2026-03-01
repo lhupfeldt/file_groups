@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from file_groups.handler import FileHandler
-from file_groups.config.files import ConfigFiles
+from file_groups.config.config_handler import ConfigHandler
 
 from ..conftest import same_content_files
 
@@ -38,7 +38,7 @@ def test_no_symlink_check_registered_delete_ok_dry(duplicates_dir, log_debug):
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir, log_debug):
-    fh = FileHandler([], '.', dry_run=False, config_files=ConfigFiles(protect=[re.compile(r'.*a$')]))
+    fh = FileHandler([], '.', dry_run=False, config_handler=ConfigHandler(protect=[re.compile(r'.*a$')]))
 
     ya_abs = str(Path('ya').absolute())
     with pytest.raises(AssertionError) as exinfo:
@@ -53,7 +53,7 @@ def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir,
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_dry_protected_matched(duplicates_dir):
-    fh = FileHandler([], '.', dry_run=True, config_files=ConfigFiles(protect=[re.compile(r'.*a$')]))
+    fh = FileHandler([], '.', dry_run=True, config_handler=ConfigHandler(protect=[re.compile(r'.*a$')]))
 
     ya_abs = str(Path('ya').absolute())
     with pytest.raises(AssertionError) as exinfo:
@@ -65,7 +65,7 @@ def test_no_symlink_check_registered_delete_ok_dry_protected_matched(duplicates_
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_protected_un_matched(duplicates_dir, log_debug):
-    fh = FileHandler([], '.', dry_run=False, config_files=ConfigFiles(protect=[re.compile(r'.*b$')]))
+    fh = FileHandler([], '.', dry_run=False, config_handler=ConfigHandler(protect=[re.compile(r'.*b$')]))
 
     ya_abs = str(Path('ya').absolute())
     fh._no_symlink_check_registered_delete(ya_abs)
@@ -76,7 +76,7 @@ def test_no_symlink_check_registered_delete_ok_protected_un_matched(duplicates_d
 
 @same_content_files('Hi', 'ya')
 def test_no_symlink_check_registered_delete_ok_dry_protected_un_matched(duplicates_dir, log_debug):
-    fh = FileHandler([], '.', dry_run=True, config_files=ConfigFiles(protect=[re.compile(r'.*b$')]))
+    fh = FileHandler([], '.', dry_run=True, config_handler=ConfigHandler(protect=[re.compile(r'.*b$')]))
 
     ya_abs = str(Path('ya').absolute())
     fh._no_symlink_check_registered_delete(ya_abs)
