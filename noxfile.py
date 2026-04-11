@@ -45,6 +45,12 @@ def unit(session):
     session.run("pytest", "--import-mode=append", "--cov", "--cov-report=term-missing", f"--cov-config={_TEST_DIR}/.coveragerc", *session.posargs)
 
 
+@nox.session(python=_PY_VERSIONS, reuse_venv=True, default=False)
+def perf(session):
+    session.install(".", "pytest>=7.4.1", "guppy3>=3.0.10")
+    session.run("pytest", "-s", "--import-mode=append", "--no-cov", "test/perf", *session.posargs)
+
+
 @nox.session(python=_PY_VERSIONS[0], reuse_venv=True)
 def build(session):
     if Path("dist").is_dir():
