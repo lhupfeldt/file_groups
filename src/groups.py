@@ -3,12 +3,14 @@ from os import DirEntry
 from pathlib import Path
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import chain
 from enum import Enum
 import logging
-from typing import Sequence, cast
+from pprint import pformat
+from typing import Self, Sequence, Iterator, cast
 
+from .path_display import PathDisplay
 from .config.dir_config import DirConfig
 from .config.config_handler import ConfigHandler
 
@@ -23,52 +25,185 @@ class GroupType(Enum):
 
 
 @dataclass
-class _Group():
-    typ: GroupType
-
-    dirs: dict[str, Path]
-
-    files: dict[str, DirEntry]
-    symlinks: dict[str, DirEntry]
-    symlinks_by_abs_points_to: dict[str, list[DirEntry]]
+class _Entries():
+    files: dict[str, DirEntry] = field(default_factory=dict)
+    symlinks: dict[str, DirEntry] = field(default_factory=dict)
 
     # For stats only
-    num_directories: int = 0
     num_directory_symlinks: int = 0
 
-    def add_entry_match(self, entry: DirEntry) -> None:
-        """Abstract, but abstract and dataclass does not work with mypy. https://github.com/python/mypy/issues/500"""
 
-@dataclass
-class _IncludeMatchGroup(_Group):
-    include: re.Pattern|None = None
+class DirGroups(_Entries):
+    """Create different groups of regular files and symlinks by collecting files under a directory.
 
-    def add_entry_match(self, entry: DirEntry) -> None:
-        if not self.include:
-            self.files[entry.path] = entry
+    Arguments:
+        root_file_groups: The top level collection and argument handling class.
+        abs_dir_path: The absolute path to the directory.
+    """
+
+    def __init__(self, typ: GroupType, root_file_groups: "FileGroups", rel_dir_path: Path, parent: Self|"FileGroups"):
+        super().__init__()
+        self.typ = typ
+        self.root_file_groups = root_file_groups
+        self.rel_dir_path = rel_dir_path
+        self.abs_dir_path: Path = parent.abs_dir_path / rel_dir_path
+        self.dir_config: DirConfig = root_file_groups.config_handler.config_file_loader.load_dir_config(self.abs_dir_path, parent.dir_config)
+        self.include_exclude = root_file_groups.protect_exclude if self.typ == GroupType.MUST_PROTECT else root_file_groups.work_include
+
+        self.other = _Entries()
+
+    def handle_entry(self, entry: DirEntry) -> None:
+        """Put entry in  the correct group. Call 'collect' if entry is a directory."""
+        pattern = self.dir_config.is_protected(entry) if self.typ is GroupType.MAY_WORK_ON else None
+
+        if entry.is_dir(follow_symlinks=False):
+            abs_dir_path = str(Path(entry.path).resolve())
+            arg_dir = self.root_file_groups.dirs.get(abs_dir_path)
+            if arg_dir:
+                _LOG.debug("'%s' is already in dirs (from args)", entry.path)
+                arg_dir.collect()
+                return
+
+            dir_grp = DirGroups(GroupType.MUST_PROTECT if pattern else self.typ, self.root_file_groups, entry.path, self)
+            self.root_file_groups.dirs[abs_dir_path] = dir_grp
+            dir_grp.collect()
             return
 
-        match = self.include.match(entry.name)
-        _LOG.debug(" - include %s, match %s", self.include, match)
+        if entry.name in self.root_file_groups.config_handler.conf_file_names:
+            return
 
-        if match:
-            self.files[entry.path] = entry
+        add_to: _Entries = self
+        root_typ_file_group = self.root_file_groups.must_protect
+        if self.typ is GroupType.MAY_WORK_ON:
+            root_typ_file_group = self.root_file_groups.may_work_on
+            # Check for match against configured protect patterns, if match, then the file must go to the protect group instead
+            if pattern:
+                _LOG.debug("'%s' is protected by regex %s. Add to self.other (GroupType.MAY_WORK_ON) instead.", entry.path, pattern)
+                add_to = self.other
+                root_typ_file_group = self.root_file_groups.must_protect
+
+        if entry.is_symlink():
+            # cast: https://github.com/python/mypy/issues/11964
+            points_to = os.readlink(cast(str, entry))
+
+            if entry.is_dir(follow_symlinks=True):
+                _LOG.debug("%s - '%s' -> '%s' is a symlink to a directory - ignoring", self.typ.name, entry.path, points_to)
+                add_to.num_directory_symlinks += 1
+                return
+
+            add_to.symlinks[entry.name] = entry
+
+            abs_points_to = os.path.normpath(os.path.join(self.abs_dir_path, points_to))
+            root_typ_file_group.symlinks_by_abs_points_to[abs_points_to].append(entry)
+            return
+
+        _LOG.debug("%s - %s, entry name: %s, add_to: %s", self.abs_dir_path, self.typ.name, entry.name, "self" if add_to is self else "other")
+
+        # Check if file name matches include/exclude pattern and determine whether to add file to 'files'.
+        if not self.include_exclude:
+            add_to.files[entry.name] = entry
+            return
+
+        if (match := (self.include_exclude.match(entry.name) or self.include_exclude.match(str(self.abs_dir_path/entry.name)))) and self.typ == GroupType.MUST_PROTECT:
+            _LOG.debug(" %s - exclude %s, match %s", self.typ, self.include_exclude, match)
+            return
+
+        if not match and self.typ == GroupType.MAY_WORK_ON:
+            _LOG.debug(" %s - include %s, no match %s", self.typ, self.include_exclude, match)
+            return
+
+        add_to.files[entry.name] = entry
+
+    def collect(self) -> None:
+        """Recursively find all files and directories belonging to 'group'
+
+        Insert self in global 'dirs' dict.
+        """
+
+        _LOG.debug("collect %s: %s", self.typ.name, self.abs_dir_path)
+
+        for entry in os.scandir(self.abs_dir_path):
+            self.handle_entry(entry)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(\n" + pformat(self.__dict__, indent=4) + ")"
 
 
 @dataclass
-class _ExcludeMatchGroup(_Group):
-    exclude: re.Pattern|None = None
+class _FileGroupsEntries():
+    """Provides __contains__ and items()."""
+    __slots__ = ('dirs', 'typ', 'prop_name')
 
-    def add_entry_match(self, entry: DirEntry) -> None:
-        if not self.exclude:
-            self.files[entry.path] = entry
-            return
+    def __init__(self, dirs: dict[str, DirGroups], typ: GroupType, prop_name: str):
+        self.dirs = dirs
+        self.typ = typ
+        self.prop_name = prop_name
 
-        match = self.exclude.match(entry.name)
-        _LOG.debug(" - exclude %s, match %s", self.exclude, match)
+    def _files_symlinks(self, dir_grps: DirGroups) -> dict[str, DirEntry]:
+        entries: _Entries = dir_grps if dir_grps.typ == self.typ else dir_grps.other
+        # _LOG.debug("_files_symlinks: self.typ: %s, dir_grps.typ: %s", self.typ, dir_grps.typ)
+        prop_val = getattr(entries, self.prop_name)
+        # _LOG.debug("prop_name %s, prop_val %s", self.prop_name, prop_val)
+        return cast(dict[str, DirEntry], prop_val)
 
-        if not match:
-            self.files[entry.path] = entry
+    def __contains__(self, left: str) -> bool:
+        abs_file_path = Path(left)
+        dir_grps = self.dirs.get(str(abs_file_path.parent))
+        # _LOG.debug("__contains__: abs_file_path: %s, dir_grps %s", abs_file_path, dir_grps)
+
+        if dir_grps and (abs_file_path.name in self._files_symlinks(dir_grps)):
+            return True
+
+        return False
+
+    def items(self) -> Iterator[tuple[str, DirEntry]]:
+        """Iterate path, DirEntry of self.typ"""
+        # _LOG.debug("%s items - %s", self.typ, self.prop_name)
+        for abs_dir_path, dir_grps in self.dirs.items():
+            for file_name, dir_entry in self._files_symlinks(dir_grps).items():
+                yield str(Path(abs_dir_path)/file_name), dir_entry
+
+    def values(self) -> Iterator[DirEntry]:
+        """Iterate DirEntry of self.typ"""
+        # _LOG.debug("%s values - %s", self.typ, self.prop_name)
+        for _, val in self.items():
+            yield val
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate path of self.typ"""
+        for abs_path, _ in self.items():
+            yield abs_path
+
+    keys = __iter__
+
+    def __len__(self) -> int:
+        """Number of paths of self.typ"""
+        length = 0
+        for _, dir_grps in self.dirs.items():
+            length += len(self._files_symlinks(dir_grps))
+
+        return length
+
+
+class _FileGroupHolder():
+    __slots__ = ('dirs', 'typ', 'files', 'symlinks', 'symlinks_by_abs_points_to')
+
+    def __init__(self, dirs: dict[str, DirGroups], typ: GroupType):
+        self.dirs = dirs
+        self.typ = typ
+        self.files = _FileGroupsEntries(dirs=dirs, typ=typ, prop_name="files")
+        self.symlinks = _FileGroupsEntries(dirs=dirs, typ=typ, prop_name="symlinks")
+        self.symlinks_by_abs_points_to: dict[str, list[DirEntry]] = defaultdict(list)
+
+    @property
+    def num_directories(self) -> int:
+        """Number of directories of self.typ visited."""
+        return sum((1 for dd in self.dirs.values() if dd.typ == self.typ))
+
+    @property
+    def num_directory_symlinks(self) -> int:
+        """Number of directories of self.typ visited."""
+        return sum((dd.num_directory_symlinks for dd in self.dirs.values() if dd.typ == self.typ))
 
 
 class FileGroups():
@@ -99,150 +234,41 @@ class FileGroups():
             protect_dirs_seq: Sequence[Path], work_dirs_seq: Sequence[Path],
             *,
             protect_exclude: re.Pattern|None = None, work_include: re.Pattern|None = None,
-            config_handler: ConfigHandler|None = None):
+            config_handler: ConfigHandler|None = None,
+            path_display: PathDisplay|None = None) -> None:
         super().__init__()
+        self.protect_exclude = protect_exclude
+        self.work_include = work_include
+        self.config_handler = config_handler or ConfigHandler(path_display=path_display or PathDisplay())
+        self.dir_config = self.config_handler.load_config_dir_files()
+        self.abs_dir_path = Path(".").resolve()  # Dir args are relative to current dir.
+        self.dirs: dict[str, DirGroups] = {}
 
-        self.config_handler = config_handler or ConfigHandler()
-        self.config_handler.load_config_dir_files()
-        self.per_dir_configs: dict[Path, DirConfig] = {}  # key is abs_dir_path
+        self.must_protect = _FileGroupHolder(self.dirs, GroupType.MUST_PROTECT)
+        self.may_work_on = _FileGroupHolder(self.dirs, GroupType.MAY_WORK_ON)
 
-        # Turn all paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
-        protect_dirs: dict[str, Path] = {os.path.abspath(os.path.realpath(kp)): kp for kp in protect_dirs_seq}
+        # Turn all directory paths into absolute paths with symlinks resolved, keep referrence to original argument for messages
+        # Sort the input by length to guarantee that parents are handled first
+        protect_dirs: dict[str, tuple[GroupType, Path]] = {str(Path(pd).resolve()): (GroupType.MUST_PROTECT, pd) for pd in protect_dirs_seq}
+        work_dirs: dict[str, tuple[GroupType, Path]] = {str(Path(wd).resolve()): (GroupType.MAY_WORK_ON, wd) for wd in work_dirs_seq}
 
-        work_dirs: dict[str, Path] = {}
-        for input_work_dir in work_dirs_seq:
-            real_dp = os.path.abspath(os.path.realpath(input_work_dir))
-            if real_dp in protect_dirs:
-                specified_protect_dir = protect_dirs[real_dp]
+        for any_dir, (group_type, input_path) in sorted(chain(protect_dirs.items(), work_dirs.items()), key=lambda item: len(Path(item[0]).parts)):
+            if group_type == GroupType.MAY_WORK_ON and any_dir in protect_dirs:
+                input_protect_dir = protect_dirs[any_dir][1]
 
-                if input_work_dir == specified_protect_dir:
-                    _LOG.info("Ignoring 'work' dir '%s' which is also a 'protect' dir.", input_work_dir)
+                if input_path == input_protect_dir:
+                    _LOG.info("Ignoring 'work' dir '%s' which is also a 'protect' dir.", input_path)
                     continue
 
-                _LOG.info("Ignoring 'work' dir '%s' (from argument '%s') which is also a 'protect' dir (from argument '%s').", real_dp, input_work_dir, specified_protect_dir)
+                _LOG.info("Ignoring 'work' dir '%s' (from argument '%s') which is also a 'protect' dir (from argument '%s').", any_dir, input_path, input_protect_dir)
                 continue
 
-            work_dirs[real_dp] = input_work_dir
+            parent = self.dirs.get(str(Path(any_dir).parent)) or self
+            dg = DirGroups(group_type, self, Path(any_dir), parent)
+            self.dirs[any_dir] = dg
 
-        self.must_protect = _ExcludeMatchGroup(GroupType.MUST_PROTECT, protect_dirs, {}, {}, defaultdict(list), exclude=protect_exclude)
-        self.may_work_on = _IncludeMatchGroup(GroupType.MAY_WORK_ON, work_dirs, {}, {}, defaultdict(list), include=work_include)
-
-        self.collect()
-
-    def collect(self) -> None:
-        """Split files into groups.
-
-        E.g.:
-
-            Given:
-
-            top/d1
-            top/d1/d1
-            top/d1/d1/f1.jpg
-            top/d1/d1/f2.jpg
-            top/d1/d1/f2.JPG
-            top/d1/d2
-            top/d1/d2/f1.jpg
-            top/d1/d2/f2.jpg
-            top/d1/f1.jpg
-            top/d1/f2.jpg
-            top/d2
-            top/d2/d1
-            top/d2/d1/f1.jpg
-
-            When: work_dirs_seq is [top, top/d1/d1]
-            And: protect_dirs_seq is [top/d1]
-
-            Then:
-
-            Must protect:
-            top/d1/d2/f1.jpg
-            top/d1/d2/f2.jpg
-            top/d1/f1.jpg
-            top/d1/f2.jpg
-
-            May work_on:
-            top/d1/d1/f1.jpg
-            top/d1/d1/f2.jpg
-            top/d1/d1/f2.JPG
-            top/d2/d1/f1.jpg
-
-        This is called from __init__(), so there would normally be no need to call this explicitly.
-        """
-
-        checked_dirs: set[str] = set()
-
-        def handle_entry(abs_dir_path: str, group: _Group, other_group: _Group, dir_config: DirConfig, entry: DirEntry) -> None:
-            """Put entry in  the correct group. Call 'find_group' if entry is a directory."""
-            if group.typ is GroupType.MAY_WORK_ON:
-                # Check for match against configured protect patterns, if match, then the file must got to protect group instead
-                pattern = dir_config.is_protected(entry)
-                if pattern:
-                    _LOG.debug("find %s - '%s' is protected by regex %s, assigning to group %s instead.", group.typ.name, entry.path, pattern, other_group.typ.name)
-                    group, other_group = other_group, group
-
-            if entry.is_dir(follow_symlinks=False):
-                if entry.path in other_group.dirs:
-                    _LOG.debug("find %s - '%s' is in '%s' dir list and not in '%s' dir list", group.typ.name, entry.path, other_group.typ.name, group.typ.name)
-                    find_group(entry.path, other_group, group, dir_config)
-                    return
-
-                find_group(entry.path, group, other_group, dir_config)
-                return
-
-            if entry.name in self.config_handler.conf_file_names:
-                return
-
-            if entry.is_symlink():
-                # cast: https://github.com/python/mypy/issues/11964
-                points_to = os.readlink(cast(str, entry))
-                abs_points_to = os.path.normpath(os.path.join(abs_dir_path, points_to))
-
-                if entry.is_dir(follow_symlinks=True):
-                    _LOG.debug("find %s - '%s' -> '%s' is a symlink to a directory - ignoring", group.typ.name, entry.path, points_to)
-                    group.num_directory_symlinks += 1
-                    return
-
-                group.symlinks[entry.path] = entry
-                group.symlinks_by_abs_points_to[abs_points_to].append(entry)
-                return
-
-            _LOG.debug("find %s - entry name: %s", group.typ.name, entry.name)
-            group.add_entry_match(entry)
-
-        def find_group(abs_dir_path: str, group: _Group, other_group: _Group, parent_conf: DirConfig) -> None:
-            """Recursively find all files belonging to 'group'"""
-            _LOG.debug("find %s: %s", group.typ.name, abs_dir_path)
-            if abs_dir_path in checked_dirs:
-                _LOG.debug("directory already checked")
-                return
-
-            group.num_directories += 1
-            conf_dir = Path(abs_dir_path)
-            dir_config = self.config_handler.dir_config(conf_dir, parent_conf)
-            self.per_dir_configs[conf_dir] = dir_config
-            # _LOG.debug("per_dir_configs:\n %s", self.per_dir_configs)
-
-            for entry in os.scandir(abs_dir_path):
-                handle_entry(abs_dir_path, group, other_group, dir_config, entry)
-
-            checked_dirs.add(abs_dir_path)
-
-        for any_dir in sorted(chain(self.must_protect.dirs, self.may_work_on.dirs), key=lambda dd: len(Path(dd).parts)):
-            parent_dir = Path(any_dir)
-            while len(parent_dir.parts) > 1:
-                parent_conf = self.per_dir_configs.get(parent_dir)
-                if parent_conf:
-                    break
-
-                parent_dir = parent_dir.parent
-            else:
-                parent_conf = self.config_handler.global_config
-
-            if any_dir in self.must_protect.dirs:
-                find_group(any_dir, self.must_protect, self.may_work_on, parent_conf)
-            else:
-                find_group(any_dir, self.may_work_on, self.must_protect, parent_conf)
+        for _, dg in list(self.dirs.items()):
+            dg.collect()
 
     def dump(self) -> None:
         """Log collected files. This may be A LOT of output for large directories."""

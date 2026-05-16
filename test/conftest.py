@@ -10,6 +10,9 @@ import logging
 
 from pytest import fixture  # type: ignore
 
+from file_groups.path_display import PathDisplay
+from file_groups.logging_filters import PathFilter
+
 
 _HERE = Path(__file__).absolute().parent
 
@@ -46,8 +49,8 @@ def _fixture_out_dir(request):
 
 
 # Make sure we don't use config files from system or user home
-os.environ['XDG_CONFIG_DIRS'] = str(_HERE / 'config/sys')
-os.environ['XDG_CONFIG_HOME'] = str(_HERE / 'config/home')
+os.environ['XDG_CONFIG_DIRS'] = str(_HERE/'config/sys')
+os.environ['XDG_CONFIG_HOME'] = str(_HERE/'config/home')
 
 
 class TestSetupException(Exception):
@@ -100,6 +103,14 @@ _different_content_files_funcs = {}
 
 
 underscore_test_re = re.compile('_test$')
+
+
+@fixture(name="working_dir")
+def _fixture_working_dir(request, out_dir, monkeypatch):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(out_dir)
+    return out_dir
+
 
 @fixture(name="duplicates_dir")
 def _fixture_duplicates_dir(request, out_dir, monkeypatch):
@@ -240,7 +251,14 @@ def hardlink_files(links):
 @fixture(name="log_debug")
 def _fixture_caplog_debug(caplog):
     caplog.set_level(logging.DEBUG)
+    for handler in logging.root.handlers:
+        handler.addFilter(PathFilter(home_tilde=False, rel_path=True))
     return caplog
+
+
+@fixture(name="path_display")
+def _fixture_path_display(working_dir):
+    return PathDisplay()
 
 
 def dir_conf_files(protect_local, protect_recursive, *conf_files):

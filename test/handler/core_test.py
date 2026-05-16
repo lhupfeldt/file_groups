@@ -115,6 +115,16 @@ def test_delete_symlinked_once_with_corresponding(duplicates_dir, log_debug):
     assert count_files({'df': 1})
 
 
+@same_content_files('Hi', 'df/f11')
+@symlink_files([('f11', 'df/f11sym')])
+def test_delete_no_protect_dir_symlinked_once_without_corresponding(duplicates_dir, log_debug):
+    fh = FileHandler([], ['df'], dry_run=True)
+    ck = FP(fh, str(Path('df/f11').absolute()), None, log_debug)
+    assert ck.check_delete(dry=True)
+    assert ck.check_delete(dry=False)
+    assert count_files({'df': 0})
+
+
 @same_content_files('Hi', 'ki/f11', 'df/f11')
 @symlink_files([('f11', 'ki/f11sym'), ('f11', 'df/f11sym')])
 def test_delete_symlinked_once_without_corresponding(duplicates_dir, log_debug):

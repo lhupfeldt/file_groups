@@ -1,4 +1,0 @@
-pytest>=7.2.1
-# https://github.com/nedbat/coveragepy/issues/1280
-coverage>=7.1.0
-pytest-cov>=4.0.0

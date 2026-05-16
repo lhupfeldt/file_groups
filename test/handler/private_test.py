@@ -46,7 +46,7 @@ def test_no_symlink_check_registered_delete_ok_protected_matched(duplicates_dir,
 
     assert f"Oops, trying to delete protected file '{str(ya_abs)}'." in str(exinfo.value)
 
-    exp_msg = f"find MAY_WORK_ON - '{duplicates_dir}/ya' is protected by regex re.compile('.*a$'), assigning to group MUST_PROTECT instead."
+    exp_msg = f"'{duplicates_dir}/ya' is protected by regex re.compile('.*a$'). Add to self.other (GroupType.MAY_WORK_ON) instead."
     assert exp_msg in log_debug.text
     assert Path(ya_abs).exists()
 

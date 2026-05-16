@@ -5,9 +5,9 @@ import pprint
 import logging
 
 from appdirs import AppDirs
-
 import pytest
 
+from file_groups.path_display import PathDisplay
 from file_groups.config.dir_config import DirConfig
 from file_groups.config.config_handler import ConfigHandler
 
@@ -21,6 +21,8 @@ _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT_RECURSIVE =  set()
 
 _EXP_SITE_CONFIG_DIR_CFG_NO_GLOBAL_PROTECT = (set([re.compile(r"P1.*\.jpg"), re.compile(r"P2.*\.jpg")]), set([re.compile(r"PR1.*\.jpg")]))
 _EXP_USER_CONFIG_DIR_CFG_NO_GLOBAL_PROTECT = (set([re.compile(r"P3.*.jpg")]), set([re.compile(r"PP.*.jpg")]))
+
+_PATH_DISPLAY = PathDisplay()
 
 
 class MyEncoder(json.JSONEncoder):
@@ -49,7 +51,7 @@ def _pp(msg, obj):
 
 
 @pytest.fixture
-def set_conf_dirs(request, monkeypatch):
+def set_conf_dirs(request, path_display, monkeypatch) -> tuple[str, str]:
     """Monkey patch appdirs to move the system and user config dirs to test specific directories"""
 
     func_name, _, _ = request.node.name.partition('[')
@@ -63,7 +65,18 @@ def set_conf_dirs(request, monkeypatch):
     user_config_dir = test_specific_config_dir_prefix/'home'
     monkeypatch.setattr(AppDirs, "user_config_dir", str(user_config_dir))
 
-    return site_config_dir, user_config_dir
+    # cwd = Path.cwd()
+    # try:
+    #     site_config_dir = site_config_dir.relative_to(cwd)
+    # except ValueError:
+    #     pass
+    #
+    # try:
+    #     user_config_dir = user_config_dir.relative_to(cwd)
+    # except ValueError:
+    #     pass
+
+    return path_display.handle_str(str(site_config_dir)), path_display.handle_str(str(user_config_dir))
 
 
 def app_dirs_conf_files(protect_local, protect_recursive, protect_global, *conf_files):
@@ -81,7 +94,7 @@ def app_dirs_conf_files(protect_local, protect_recursive, protect_global, *conf_
 
 
 def _mk_global_dir_conf(patterns: set[re.Pattern]) -> DirConfig:
-    return DirConfig(patterns, set(), None, [])
+    return DirConfig(patterns, set(), None, [], path_display=_PATH_DISPLAY)
 
 
 def _mk_empty_dir_conf() -> DirConfig:
@@ -149,8 +162,8 @@ def test_config_files_sys_user_and_and_other_dir_config_files_no_global_no_other
     cfgf.load_config_dir_files()
 
     ddd = duplicates_dir/"ddd"
-    ddd_cfg = cfgf.dir_config(ddd, cfgf.global_config)
-    assert ddd_cfg == DirConfig(set([re.compile(r"zzz")]), set([re.compile(r"xxx.*xxx"), re.compile(r"yyy.*yyy")]), ddd, [".file_groups.conf"])
+    ddd_cfg = cfgf.config_file_loader.load_dir_config(ddd, cfgf.global_config)
+    assert ddd_cfg == DirConfig(set([re.compile(r"zzz")]), set([re.compile(r"xxx.*xxx"), re.compile(r"yyy.*yyy")]), ddd, [".file_groups.conf"], path_display=_PATH_DISPLAY)
 
     _pp("cfgf.global_config:", cfgf.global_config)
     assert cfgf.global_config.protect_recursive == _EXP_GLOBAL_CFG_NO_GLOBAL_PROTECT_RECURSIVE
@@ -162,9 +175,9 @@ def check_inherit_other(cfgf, dupe_dir):
         ddd2 = ddd1/"ddd2"
         ddd3 = ddd2/"ddd3"
 
-        cfg1 = cfgf.dir_config(ddd1, _mk_empty_dir_conf())
-        cfg2 = cfgf.dir_config(ddd2, cfg1)
-        cfg3 = cfgf.dir_config(ddd3, cfg2)  # ddd3 has no config file
+        cfg1 = cfgf.config_file_loader.load_dir_config(ddd1, _mk_empty_dir_conf())
+        cfg2 = cfgf.config_file_loader.load_dir_config(ddd2, cfg1)
+        cfg3 = cfgf.config_file_loader.load_dir_config(ddd3, cfg2)  # ddd3 has no config file
 
         ddd1_recursive = set([re.compile(r"zzz")])
 
@@ -226,9 +239,9 @@ def check_inherit_global(cfgf, dupe_dir):
             re.compile(r"gusr1.*\.jpg"),
         ])
 
-        cfg1 = cfgf.dir_config(ddd1, _mk_global_dir_conf(global_recursive))  # ddd1 has no config file, or it is ignored
-        cfg2 = cfgf.dir_config(ddd2, cfg1)  # ddd2 has no config file, or it is ignored
-        cfg3 = cfgf.dir_config(ddd3, cfg2)  # ddd3 has no config file
+        cfg1 = cfgf.config_file_loader.load_dir_config(ddd1, _mk_global_dir_conf(global_recursive))  # ddd1 has no config file, or it is ignored
+        cfg2 = cfgf.config_file_loader.load_dir_config(ddd2, cfg1)  # ddd2 has no config file, or it is ignored
+        cfg3 = cfgf.config_file_loader.load_dir_config(ddd3, cfg2)  # ddd3 has no config file
 
         _pp("cfgf.global_config:", cfgf.global_config)
 
@@ -284,9 +297,9 @@ def test_config_files_inherit_global_recursive(duplicates_dir, set_conf_dirs):
     ddd2 = ddd1/"ddd2"
     ddd3 = ddd2/"ddd3"
 
-    cfg1 = cfgf.dir_config(ddd1, cfgf.global_config)
-    cfg2 = cfgf.dir_config(ddd2, cfg1)
-    cfg3 = cfgf.dir_config(ddd3, cfg2)  # ddd3 has no config file
+    cfg1 = cfgf.config_file_loader.load_dir_config(ddd1, cfgf.global_config)
+    cfg2 = cfgf.config_file_loader.load_dir_config(ddd2, cfg1)
+    cfg3 = cfgf.config_file_loader.load_dir_config(ddd3, cfg2)  # ddd3 has no config file
 
     global_recursive = set([
         re.compile(r"gsys1.*\.jpg"),
@@ -338,14 +351,14 @@ def test_config_files_two_in_same_config_dir(set_conf_dirs):
 
 
 @dir_conf_files([r'xxx.*xxx', r'yyy.*yyy'], [r'zzz'], 'ddd/.file_groups.conf', 'ddd/file_groups.conf')
-def test_config_files_two_in_same_other_dir(duplicates_dir):
+def test_config_files_two_in_same_other_dir(duplicates_dir, path_display):
     cfgf = ConfigHandler(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
-        cfgf.dir_config(Path(ddd), cfgf.global_config)
+        cfgf.config_file_loader.load_dir_config(Path(ddd), cfgf.global_config)
 
-    assert f"More than one config file in dir '{duplicates_dir}/ddd': ['file_groups.conf', '.file_groups.conf']" in str(exinfo.value)
+    assert f"More than one config file in dir '{path_display.handle_path(duplicates_dir/'ddd')}': ['file_groups.conf', '.file_groups.conf']" in str(exinfo.value)
 
 
 @same_content_files(repr({"filegroups": {}}), 'ddd/file_groups.conf')
@@ -354,9 +367,9 @@ def test_config_files_missing_file_groups_key(duplicates_dir):
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
-        cfgf.dir_config(Path(ddd), cfgf.global_config)
+        cfgf.config_file_loader.load_dir_config(Path(ddd), cfgf.global_config)
 
-    assert f"Config file '{duplicates_dir}/ddd/file_groups.conf' is missing mandatory configuration 'file_groups[protect]'" in str(exinfo.value)
+    assert "Config file 'ddd/file_groups.conf' is missing mandatory configuration 'file_groups[protect]'" in str(exinfo.value)
 
 
 @same_content_files(repr({"file_groups": {"potect": {}}}), 'ddd/file_groups.conf')
@@ -365,9 +378,9 @@ def test_config_files_missing_protect_key(duplicates_dir):
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
-        cfgf.dir_config(Path(ddd), cfgf.global_config)
+        cfgf.config_file_loader.load_dir_config(Path(ddd), cfgf.global_config)
 
-    assert f"Config file '{duplicates_dir}/ddd/file_groups.conf' is missing mandatory configuration 'file_groups[protect]'" in str(exinfo.value)
+    assert "Config file 'ddd/file_groups.conf' is missing mandatory configuration 'file_groups[protect]'" in str(exinfo.value)
 
 
 def test_config_files_unknown_protect_sub_key_config_dir(set_conf_dirs):
@@ -382,27 +395,29 @@ def test_config_files_unknown_protect_sub_key_config_dir(set_conf_dirs):
 
 
 @same_content_files(repr({"file_groups": {"protect": {"hola": r"X"}}}), 'ddd/file_groups.conf')
-def test_config_files_unknown_protect_sub_key_other_dir(duplicates_dir):
+def test_config_files_unknown_protect_sub_key_other_dir(duplicates_dir, path_display):
     cfgf = ConfigHandler(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
-        cfgf.dir_config(Path(ddd), cfgf.global_config)
+        cfgf.config_file_loader.load_dir_config(Path(ddd), cfgf.global_config)
 
-    exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{duplicates_dir}/ddd/file_groups.conf' are: ('local', 'recursive'). "
+    exp_cfg_file = path_display.handle_path(duplicates_dir/'ddd/file_groups.conf')
+    exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{exp_cfg_file}' are: ('local', 'recursive'). "
     exp += "Got: 'hola'."
     assert exp in str(exinfo.value)
 
 
 @same_content_files(repr({"file_groups": {"protect": {"local": r"X", "global": r"X"}}}), 'ddd/.file_groups.conf')
-def test_config_files_invalid_protect_global_key_other_dir(duplicates_dir):
+def test_config_files_invalid_protect_global_key_other_dir(duplicates_dir, path_display):
     cfgf = ConfigHandler(ignore_config_dirs_config_files=False, ignore_per_directory_config_files=False)
 
     with pytest.raises(Exception) as exinfo:
         ddd = f"{duplicates_dir}/ddd"
-        cfgf.dir_config(Path(ddd), cfgf.global_config)
+        cfgf.config_file_loader.load_dir_config(Path(ddd), cfgf.global_config)
 
-    exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{duplicates_dir}/ddd/.file_groups.conf' are: ('local', 'recursive'). "
+    exp_cfg_file = path_display.handle_path(duplicates_dir/'ddd/.file_groups.conf')
+    exp = f"The only keys allowed in 'file_groups[protect]' section in the config file '{exp_cfg_file}' are: ('local', 'recursive'). "
     exp += "Got: 'global'."
     assert exp in str(exinfo.value)
 

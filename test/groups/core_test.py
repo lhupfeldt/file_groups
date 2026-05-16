@@ -1,3 +1,4 @@
+import os
 import re
 
 import pytest
@@ -91,7 +92,7 @@ def test_file_groups_two_work_on_dirs(duplicates_dir):
 @same_content_files("More cow bells", 'ki1/df/f31', 'df2/f32')
 @different_content_files("base", 'ki1/df/f41', 'ki1/df/ki12/f41', 'ki1/df/ki13/ki14/fffff4.txt', 'ki1/f41', 'df2/f41')
 @different_content_files("base", 'ki1/df/f51', 'ki1/df/ki12/f51', 'ki1/df/ki13/ki14/fffff5.txt', 'ki1/f51', 'df2/f51')
-def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs(duplicates_dir):
+def test_file_groups_multiple_levels_nested_work_on_and_protect_dirs_no_debug(duplicates_dir):
     """Multiple protect dirs
 
     Protect:
@@ -225,6 +226,16 @@ def test_file_groups_unrelated_dirs_hardlinks_within_work_on(duplicates_dir):
     with FGC(FileGroups(["ki"], ["df"]), duplicates_dir) as ck:
         assert ck.ckfl('must_protect.files', 'ki/f12', 'ki/f22', 'ki/f32')
         assert ck.ckfl('may_work_on.files', 'df/f11', 'df/f21', 'df/f31', 'df/f41', 'df/f41hard')
+
+
+@same_content_files("Hejsa", 'ki1/f11', 'ki1/f12.txt')
+@same_content_files("Hej", 'ki1/df/f21', 'ki1/df/f22.xtx')
+def test_file_groups_work_on_and_protect_dirs_with_patterns(duplicates_dir, log_debug):
+    with FGC(FileGroups(["ki1"], ["ki1/df"], protect_exclude=re.compile(r'.*\.txt$'), work_include=re.compile(r'.*\.xtx$')), duplicates_dir) as ck:
+        assert ck.ckfl('must_protect.files', 'ki1/f11')
+        assert ck.ckfl('may_work_on.files', 'ki1/df/f22.xtx')
+
+    ck.fg.stats()
 
 
 @same_content_files("Hejsa", 'ki1/df/f11', 'ki1/df/ki12/f11', 'ki1/df/ki13/f11', 'ki1/df/ki13/ki14/f11', 'ki1/df/ki13/df12/f11', 'ki1/f11', 'df2/f11')
@@ -385,3 +396,10 @@ def test_file_groups_no_debug_log_dump(duplicates_dir, caplog):
 
     out = caplog.text
     assert 'must protect:' not in out
+
+
+@same_content_files("Hi", 'df/f11', 'ki/f12')
+def test_file_groups_values(duplicates_dir, caplog):
+    fg = FileGroups(["ki"], ["df"])
+    assert list(dir_ent.path for dir_ent in fg.must_protect.files.values()) == list(dir_ent.path for dir_ent in os.scandir(duplicates_dir/"ki"))
+    assert list(dir_ent.path for dir_ent in fg.may_work_on.files.values()) == list(dir_ent.path for dir_ent in os.scandir(duplicates_dir/"df"))

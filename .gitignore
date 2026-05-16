@@ -17,6 +17,7 @@ dist
 flycheck_*.py
 build
 test/out
+*.bak
 
 # Sphinx
 docs/_build/*

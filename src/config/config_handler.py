@@ -8,6 +8,7 @@ from typing import Sequence
 
 from appdirs import AppDirs # type: ignore
 
+from ..path_display import PathDisplay
 from .dir_config import DirConfig
 from .file_loader import ConfigFileLoader
 
@@ -37,6 +38,8 @@ class ConfigHandler():
             Configuration from later entries have higher precedence.
             Note that if no AppDirs are specified, no config files will be loaded, neither from config dirs, nor from collected directories.
             See: https://pypi.org/project/appdirs/
+        config_file: Directly specify an extra/alternate config file.
+        path_display: How to display paths (in logs). See `PathDisplay`. If not specified then PathDisply with default arguments are used.
 
     Members:
        conf_file_names: File names which are config files.
@@ -51,10 +54,11 @@ class ConfigHandler():
             app_dirs: Sequence[AppDirs]|None = None,
             *,
             config_file: Path|None = None,
-        ):
+            path_display: PathDisplay|None = None):
         super().__init__()
 
-        self.global_config = DirConfig(set(protect), set(), None, [])
+        path_display = path_display or PathDisplay()
+        self.global_config = DirConfig(set(protect), set(), None, [], path_display=path_display)
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
 
         app_dirs = app_dirs or (ConfigHandler.default_appdirs,)
@@ -70,8 +74,7 @@ class ConfigHandler():
 
         self.config_file = config_file
 
-        self.config_file_loader = ConfigFileLoader(self.conf_file_name_pairs, ignore_per_directory_config_files)
-        self.dir_config = self.config_file_loader.dir_config
+        self.config_file_loader = ConfigFileLoader(self.conf_file_name_pairs, ignore_per_directory_config_files, path_display=path_display)
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
     @property
@@ -87,7 +90,7 @@ class ConfigHandler():
         self.global_config.protect_recursive |= cfg.get("global", set())
         return cf_path
 
-    def load_config_dir_files(self) -> None:
+    def load_config_dir_files(self) -> DirConfig:
         """Load config files from platform standard directories and specified config file, if any."""
 
         if not self.ignore_config_dirs_config_files:
@@ -109,3 +112,5 @@ class ConfigHandler():
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.config_file))
 
         _LOG.debug("Merged global config:\n %s", self.global_config)
+
+        return self.global_config

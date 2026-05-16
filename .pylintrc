@@ -282,7 +282,7 @@ ignored-parents=
 
 # Maximum number of arguments for function / method.
 # LHN modified
-max-args=6
+max-args=7
 
 # Maximum number of attributes for a class (see R0902).
 # LHN modified

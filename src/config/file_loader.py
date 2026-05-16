@@ -5,6 +5,7 @@ from pprint import pformat
 import logging
 from typing import Any
 
+from ..path_display import PathDisplay
 from .dir_config import RecursiveConfig, DirConfig
 
 
@@ -85,11 +86,12 @@ class ConfigFileLoader():
     _protect_key = "protect"
     _valid_dir_protect_scopes = ("local", "recursive")
 
-    def __init__(self, conf_file_name_pairs: tuple[tuple[str, str], ...], ignore_per_directory_config_files: bool =False):
+    def __init__(self, conf_file_name_pairs: tuple[tuple[str, str], ...], ignore_per_directory_config_files: bool =False, *, path_display: PathDisplay):
         super().__init__()
 
         self.conf_file_name_pairs = conf_file_name_pairs
         self.ignore_per_directory_config_files = ignore_per_directory_config_files
+        self.path_display = path_display
 
         # self.default_config_file_example = self.default_config_file.with_suffix('.example.py')
 
@@ -122,7 +124,7 @@ class ConfigFileLoader():
                 return new_config, conf_file
 
             case config_files:
-                msg = f"More than one config file in dir '{conf_dir}': {[cf.name for cf in config_files]}."
+                msg = f"More than one config file in dir '{self.path_display.handle_path(conf_dir)}': {[cf.name for cf in config_files]}."
                 _LOG.debug("%s", msg)
                 raise ConfigException(msg)
 
@@ -143,11 +145,13 @@ class ConfigFileLoader():
         try:
             protect_conf: dict[str, set[re.Pattern]] = new_config[self._fg_key][self._protect_key]
         except KeyError as ex:
-            raise ConfigException(f"Config file '{conf_file}' is missing mandatory configuration '{self._fg_key}[{self._protect_key}]'.") from ex
+            conf_file_msg = self.path_display.handle_path(conf_file)
+            raise ConfigException(f"Config file '{conf_file_msg}' is missing mandatory configuration '{self._fg_key}[{self._protect_key}]'.") from ex
 
         for key, val in protect_conf.items():
             if key not in valid_protect_scopes:
-                msg = f"The only keys allowed in '{self._fg_key}[{self._protect_key}]' section in the config file '{conf_file}' are: {valid_protect_scopes}. Got: '{key}'."
+                conf_file_msg = self.path_display.handle_path(conf_file)
+                msg = f"The only keys allowed in '{self._fg_key}[{self._protect_key}]' section in the config file '{conf_file_msg}' are: {valid_protect_scopes}. Got: '{key}'."
                 _LOG.debug("%s", msg)
                 raise ConfigException(msg)
 
@@ -162,11 +166,13 @@ class ConfigFileLoader():
 
         return protect_conf, conf_file
 
-    def dir_config(self, conf_dir: Path, parent_conf: RecursiveConfig) -> DirConfig:
+    def load_dir_config(self, conf_dir: Path, parent_conf: RecursiveConfig) -> DirConfig:
         """Read and merge config file from directory 'conf_dir' with 'parent_conf'.
 
         If directory has no parent in the file_groups included dirs, then the global conf must be passed as parent.
         """
+
+        _LOG.debug("%s - parent_conf:\n %s", conf_dir, parent_conf)
 
         cfg_merge_local: set[re.Pattern] = set()
         cfg_merge_recursive: set[re.Pattern] = set()
@@ -180,7 +186,7 @@ class ConfigFileLoader():
             if cfg_file:
                 cfg_files.append(cfg_file.name)
 
-        new_config = DirConfig(cfg_merge_recursive | parent_conf.protect_recursive, cfg_merge_local, conf_dir, cfg_files)
-        _LOG.debug("new_config:\n %s", new_config)
+        new_config = DirConfig(cfg_merge_recursive | parent_conf.protect_recursive, cfg_merge_local, conf_dir, cfg_files, path_display=self.path_display)
+        _LOG.debug("%s - new_config:\n %s", conf_dir, new_config)
 
         return new_config

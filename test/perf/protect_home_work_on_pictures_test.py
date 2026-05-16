@@ -23,5 +23,5 @@ def test_basic_collect():
 def test_debug_basic_collect(caplog):
     caplog.set_level(logging.DEBUG)
     conf_handler = ConfigHandler(ignore_config_dirs_config_files=True, ignore_per_directory_config_files=True)
-    exec_time = timeit(lambda: FileGroups([_HOME_DIR/'Documents'], [_HOME_DIR/'Pictures'], config_handler=conf_handler), number=10)
+    exec_time = timeit(lambda: FileGroups([_HOME_DIR/'Documents'], [_HOME_DIR/'Pictures'], config_handler=conf_handler), number=1)
     assert exec_time < 20

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..types import FsPath
-
+from ..path_display import PathDisplay
 
 _LOG = logging.getLogger(__name__)
 
@@ -30,29 +30,30 @@ class DirConfig(RecursiveConfig):
     protect_local: set[re.Pattern]
     config_dir: Path|None
     config_files: list[str]
+    path_display: PathDisplay
 
     def __post_init__(self) -> None:
         """Both local and  recursive protections are protected locally."""
         self._protected = self.protect_local | self.protect_recursive
 
     def is_protected(self, ff: FsPath) -> re.Pattern|None:
-        """If ff id protected by a regex pattern then return the pattern, otherwise return None."""
+        """If ff (may be a directory path or file direntry) is protected by a regex pattern then return the pattern, otherwise return None."""
+        assert Path(ff).is_absolute(), f"Expected absolute path, got '{ff}'"
 
-        # _LOG.debug("ff '%s'", ff)
+        # _LOG.debug("is_protected check: ff: '%s'", ff)
         for pattern in self._protected:
             if os.sep in str(pattern):
-                # _LOG.debug("re.Pattern '%s' has path sep", pattern)
-                assert os.path.isabs(ff), f"Expected absolute path, got '{ff}'"
+                _LOG.debug("re.Pattern '%s' has path sep", pattern)
 
                 # Search against full path
                 if pattern.search(os.fspath(ff)):
                     return pattern
 
-                # Attempt exact match against path relative to , i.e. if pattern starts with '^'.
+                # Attempt exact match against path relative to cwd, i.e. if pattern starts with '^'.
                 # This makes sense for patterns specified on commandline
                 cwd = os.getcwd()
                 ff_relative = str(Path(ff).relative_to(cwd))
-                # _LOG.debug("ff '%s' relative to start dir'%s'", ff_relative, cwd)
+                _LOG.debug("ff '%s' relative to start dir'%s'", ff_relative, cwd)
 
                 if pattern.match(ff_relative):
                     return pattern
