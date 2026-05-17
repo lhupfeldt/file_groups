@@ -1,3 +1,5 @@
+Moved here: https://codeberg.org/lhupfeldt/file-groups
+
 Library for grouping files into sets of 'work-on' and 'protect' based on arbitrarily nested directories.
 
 Symlink safe delete and rename/move of files.
